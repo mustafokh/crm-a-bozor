@@ -2,10 +2,8 @@ import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { Role } from "./constants";
+import { getJwtSecret } from "./security/env";
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-insecure-secret"
-);
 const MAX_AGE = Number(process.env.SESSION_MAX_AGE || 604800);
 export const SESSION_COOKIE = "avtosalon_session";
 
@@ -17,19 +15,30 @@ export interface SessionUser {
   avatar?: string | null;
 }
 
+function sessionCookieOptions() {
+  const isProd = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? ("strict" as const) : ("lax" as const),
+    maxAge: MAX_AGE,
+    path: "/",
+  };
+}
+
 /** Sign a JWT for the given user (edge-compatible via jose). */
 export async function createToken(user: SessionUser): Promise<string> {
   return new SignJWT({ ...user })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE}s`)
-    .sign(secret);
+    .sign(getJwtSecret());
 }
 
 /** Verify a raw JWT string and return the payload, or null. */
 export async function verifyToken(token: string): Promise<SessionUser | null> {
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return {
       id: payload.id as string,
       name: payload.name as string,
@@ -53,13 +62,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
 /** Set the session cookie. */
 export async function setSessionCookie(token: string) {
   const store = await cookies();
-  store.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: MAX_AGE,
-    path: "/",
-  });
+  store.set(SESSION_COOKIE, token, sessionCookieOptions());
 }
 
 export async function clearSessionCookie() {

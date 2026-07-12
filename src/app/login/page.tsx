@@ -8,6 +8,9 @@ import { Input, Label } from "@/components/ui/input";
 import { BrandLogo, MkusWordmark } from "@/components/brand-logo";
 import { useI18n } from "@/components/language-provider";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { safeRedirectPath } from "@/lib/security/safe-redirect";
+
+const isProd = process.env.NODE_ENV === "production";
 
 const DEMO_ACCOUNTS = [
   { labelKey: "enum.role.ADMIN", email: "admin@abozor.uz" },
@@ -20,8 +23,8 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { t } = useI18n();
-  const [email, setEmail] = useState("admin@abozor.uz");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState(isProd ? "" : "admin@abozor.uz");
+  const [password, setPassword] = useState(isProd ? "" : "admin123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -41,7 +44,7 @@ function LoginForm() {
         setLoading(false);
         return;
       }
-      const from = params.get("from") || "/dashboard";
+      const from = safeRedirectPath(params.get("from"));
       router.push(from);
       router.refresh();
     } catch {
@@ -126,6 +129,7 @@ function LoginForm() {
             </Button>
           </form>
 
+          {!isProd && (
           <div className="mt-8 rounded-3xl bg-card p-5 shadow-soft">
             <p className="text-xs font-medium text-muted-foreground">{t("login.demoTitle")}</p>
             <div className="mt-2 grid grid-cols-1 gap-1">
@@ -145,6 +149,7 @@ function LoginForm() {
               ))}
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

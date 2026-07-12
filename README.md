@@ -110,10 +110,17 @@ prisma/
 
 ## Xavfsizlik
 
-- Parollar bcrypt bilan hash qilinadi
+- Parollar bcrypt (12 round) bilan hash qilinadi; yangi parollar kamida 8 belgi
 - Har bir API endpoint rol asosida himoyalangan (`requirePermission`)
-- Muhim amallar (o'chirish, status o'zgartirish) uchun tasdiqlash oynasi
-- Barcha muhim harakatlar audit log (`activity_logs`) ga yoziladi
+- JWT cookie: `httpOnly`, `secure`, `sameSite=strict` (production)
+- Productionda zaif `JWT_SECRET` / `CRM_API_KEY` bilan ishga tushmaydi
+- Login, `/api/calls`, public ariza uchun rate limiting
+- API kalit solishtirish timing-safe; fayl yuklash magic-byte tekshiruvi
+- Security headers: HSTS, X-Frame-Options, nosniff va boshqalar
+- Muhim amallar audit log (`activity_logs`) ga yoziladi
+
+Production deploy oldin: `openssl rand -base64 32` bilan `JWT_SECRET` va `CRM_API_KEY` o'rnating.
+Seed parollarini (`admin123`) darhol almashtiring.
 
 ## Skriptlar
 

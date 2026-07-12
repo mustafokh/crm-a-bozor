@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, logActivity } from "@/lib/api-auth";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, validatePasswordPolicy } from "@/lib/password";
+import { canAssignRole, isValidRole } from "@/lib/security/roles";
+import type { Role } from "@/lib/constants";
 
 export async function PATCH(
   req: Request,
@@ -14,11 +16,25 @@ export async function PATCH(
 
   const data: Record<string, unknown> = {};
   if (body.name !== undefined) data.name = body.name;
-  if (body.role !== undefined) data.role = body.role;
+  if (body.role !== undefined) {
+    if (!isValidRole(body.role)) {
+      return NextResponse.json({ error: "Noto'g'ri rol" }, { status: 400 });
+    }
+    if (!canAssignRole(auth.role as Role, body.role)) {
+      return NextResponse.json({ error: "Bu rolni tayinlashga ruxsat yo'q" }, { status: 403 });
+    }
+    data.role = body.role;
+  }
   if (body.phone !== undefined) data.phone = body.phone || null;
   if (body.active !== undefined) data.active = body.active;
   if (body.commissionRate !== undefined) data.commissionRate = Number(body.commissionRate);
-  if (body.password) data.passwordHash = await hashPassword(body.password);
+  if (body.password) {
+    const passwordError = validatePasswordPolicy(String(body.password));
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
+    }
+    data.passwordHash = await hashPassword(body.password);
+  }
 
   const user = await prisma.user.update({
     where: { id },

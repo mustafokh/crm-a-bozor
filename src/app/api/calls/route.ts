@@ -10,6 +10,11 @@ interface CallPayload {
   file_name?: string;
 }
 
+const MAX_BODY_BYTES = 512 * 1024; // 512 KB
+const MAX_TRANSCRIPT_LEN = 100_000;
+const MAX_FILE_NAME_LEN = 255;
+const MAX_PHONE_LEN = 32;
+
 function parseCallDate(value: string): Date | null {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -19,6 +24,11 @@ function parseCallDate(value: string): Date | null {
 export async function POST(req: Request) {
   const authError = verifyApiKey(req);
   if (authError) return authError;
+
+  const contentLength = Number(req.headers.get("content-length") || 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "So'rov hajmi juda katta" }, { status: 413 });
+  }
 
   let body: CallPayload;
   try {
@@ -34,8 +44,11 @@ export async function POST(req: Request) {
 
   const fields: Record<string, string> = {};
   if (!phoneRaw) fields.phone = "Telefon talab qilinadi";
+  else if (phoneRaw.length > MAX_PHONE_LEN) fields.phone = "Telefon juda uzun";
   if (!transcript) fields.transcript = "Transkript talab qilinadi";
+  else if (transcript.length > MAX_TRANSCRIPT_LEN) fields.transcript = "Transkript juda uzun";
   if (!fileName) fields.file_name = "Fayl nomi talab qilinadi";
+  else if (fileName.length > MAX_FILE_NAME_LEN) fields.file_name = "Fayl nomi juda uzun";
   if (!callDateRaw) fields.call_date = "Qo'ng'iroq sanasi talab qilinadi";
 
   const callDate = callDateRaw ? parseCallDate(callDateRaw) : null;

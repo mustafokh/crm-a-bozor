@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { requireAuth } from "@/lib/api-auth";
+import { validateImageMagic } from "@/lib/security/file-magic";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -41,6 +42,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Fayl hajmi 5 MB dan oshmasligi kerak" }, { status: 400 });
     }
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (!validateImageMagic(buffer, file.type)) {
+      return NextResponse.json(
+        { error: "Fayl turi noto'g'ri yoki buzilgan" },
+        { status: 400 }
+      );
+    }
     const name = `${crypto.randomUUID()}.${EXT[file.type]}`;
     await writeFile(path.join(uploadDir, name), buffer);
     urls.push(`/uploads/${name}`);

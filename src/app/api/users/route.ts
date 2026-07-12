@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, logActivity } from "@/lib/api-auth";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, validatePasswordPolicy } from "@/lib/password";
+import { canAssignRole, defaultRole, isValidRole } from "@/lib/security/roles";
+import type { Role } from "@/lib/constants";
 
 export async function GET() {
   const auth = await requirePermission("settings");
@@ -24,6 +26,17 @@ export async function POST(req: Request) {
   if (!body.name || !body.email || !body.password) {
     return NextResponse.json({ error: "Ism, email va parol majburiy" }, { status: 400 });
   }
+
+  const passwordError = validatePasswordPolicy(String(body.password));
+  if (passwordError) {
+    return NextResponse.json({ error: passwordError }, { status: 400 });
+  }
+
+  const targetRole: Role = isValidRole(body.role) ? body.role : defaultRole();
+  if (!canAssignRole(auth.role as Role, targetRole)) {
+    return NextResponse.json({ error: "Bu rolni tayinlashga ruxsat yo'q" }, { status: 403 });
+  }
+
   const exists = await prisma.user.findUnique({ where: { email: body.email.toLowerCase() } });
   if (exists) return NextResponse.json({ error: "Bu email band" }, { status: 400 });
 
@@ -32,7 +45,7 @@ export async function POST(req: Request) {
       name: body.name,
       email: body.email.toLowerCase(),
       passwordHash: await hashPassword(body.password),
-      role: body.role || "MANAGER",
+      role: targetRole,
       phone: body.phone || null,
       commissionRate: Number(body.commissionRate) || 0,
     },

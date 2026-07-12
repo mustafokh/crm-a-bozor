@@ -46,6 +46,7 @@ RUN chmod +x docker-entrypoint.sh && \
 USER nextjs
 EXPOSE 3000
 
-VOLUME ["/app/public/uploads"]
+# Uploadlar: Railway Dashboard → Volumes → mount path: /app/public/uploads
+# (Docker VOLUME bu yerda ishlatilmaydi — Railway o'z volume tizimidan foydalanadi)
 
 ENTRYPOINT ["./docker-entrypoint.sh"]

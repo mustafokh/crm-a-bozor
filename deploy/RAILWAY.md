@@ -24,7 +24,16 @@ git push -u origin main
 
 5. **Settings** → **Networking** → **Generate Domain**
 
-Deploy avtomatik: `railway.toml` → build + `prisma db push` + start.
+Deploy avtomatik: build + `prisma db push` + start.
+
+### Rasm yuklashlar (ixtiyoriy, doimiy saqlash)
+
+Agar `/api/upload` orqali yuklangan rasmlar redeploy'dan keyin yo'qolmasin:
+
+1. CRM servis → **Volumes** → **Add Volume**
+2. **Mount path:** `/app/public/uploads`
+
+> Dockerfile'da `VOLUME` ishlatilmaydi — Railway faqat dashboard orqali volume qo'shishni qo'llab-quvvatlaydi.
 
 ## 3. Seed (ixtiyoriy, birinchi marta)
 
