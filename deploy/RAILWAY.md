@@ -24,7 +24,9 @@ git push -u origin main
 
 5. **Settings** → **Networking** → **Generate Domain**
 
-Deploy avtomatik: build + `prisma db push` + start.
+Deploy avtomatik: Nixpacks build + `npm run start:prod` (`prisma db push` + start).
+
+> Railway **Dockerfile ishlatmaydi** — `railway.toml` da `NIXPACKS` builder. Docker faqat lokal `docker compose` uchun.
 
 ### Rasm yuklashlar (ixtiyoriy, doimiy saqlash)
 
