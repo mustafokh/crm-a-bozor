@@ -29,14 +29,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma CLI + engine (db push uchun)
+# Prisma schema + to'liq node_modules (CLI va seed uchun — effect va boshqa deps)
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/tsx ./node_modules/tsx
-COPY --from=builder /app/node_modules/esbuild ./node_modules/esbuild
-COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
 COPY docker-entrypoint.sh ./
@@ -48,6 +43,5 @@ USER nextjs
 EXPOSE 3000
 
 # Uploadlar: Railway Dashboard → Volumes → mount path: /app/public/uploads
-# (Docker VOLUME bu yerda ishlatilmaydi — Railway o'z volume tizimidan foydalanadi)
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
