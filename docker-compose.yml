@@ -13,7 +13,9 @@ services:
       - pg-data:/var/lib/postgresql/data
 
   crm:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.compose
     container_name: mkus-crm
     restart: unless-stopped
     ports:

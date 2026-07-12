@@ -11,9 +11,12 @@ git push -u origin main
 ## 2. Railway
 
 1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**
-2. Reponi tanlang
+2. Reponi tanlang: `mustafokh/crm-a-bozor`
 3. **+ New** → **Database** → **PostgreSQL**
-4. CRM servis → **Variables**:
+4. CRM servis → **Settings** → **Build**:
+   - **Builder: Nixpacks** (Dockerfile emas!)
+   - Root'da `Dockerfile` yo'q — faqat `nixpacks.toml` + `railway.toml`
+5. CRM servis → **Variables**:
 
 | Variable | Value |
 |----------|--------|
