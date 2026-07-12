@@ -1,0 +1,404 @@
+// MKUS CRM — Prisma schema (PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// USERS & AUTH
+// role: ADMIN | MANAGER | ACCOUNTANT | WAREHOUSE
+// ─────────────────────────────────────────────────────────────
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  role           String   @default("MANAGER")
+  phone          String?
+  avatar         String?
+  active         Boolean  @default(true)
+  commissionRate Float    @default(2) // percent of deal profit
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  leads         Lead[]
+  conversations LeadConversation[]
+  deals         Deal[]
+  commissions   Commission[]
+  expenses     Expense[]
+  activityLogs ActivityLog[]
+}
+
+// ─────────────────────────────────────────────────────────────
+// CUSTOMERS
+// ─────────────────────────────────────────────────────────────
+model Customer {
+  id            String   @id @default(cuid())
+  fullName      String
+  phone         String
+  email         String?
+  passportSeries String?
+  address       String?
+  isVip         Boolean  @default(false)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  leads        Lead[]
+  deals        Deal[]
+  contracts    Contract[]
+  activityLogs ActivityLog[]
+}
+
+// ─────────────────────────────────────────────────────────────
+// CARS (Inventory)
+// condition: NEW | USED
+// status: IN_STOCK | RESERVED | SOLD | IN_TRANSIT
+// currency: UZS | USD
+// ─────────────────────────────────────────────────────────────
+model Car {
+  id            String   @id @default(cuid())
+  make          String
+  model         String
+  year          Int
+  color         String?
+  vin           String?  @unique
+  bodyNumber    String?
+  engineVolume  Float?
+  mileage       Int      @default(0)
+  condition     String   @default("USED")
+  purchasePrice Float    @default(0)
+  salePrice     Float    @default(0)
+  currency      String   @default("USD")
+  status        String   @default("IN_STOCK")
+  transmission  String? // AUTOMATIC | MANUAL | CVT | ROBOT
+  fuelType      String? // PETROL | DIESEL | HYBRID | ELECTRIC | GAS
+  drivetrain    String? // FWD | RWD | AWD
+  supplier      String?
+  description   String?
+  arrivedAt     DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  images       CarImage[]
+  deals        Deal[]
+  leads        Lead[]
+  priceHistory CarPriceHistory[]
+  incoming     IncomingCar?
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([make, status])
+}
+
+model CarImage {
+  id        String  @id @default(cuid())
+  carId     String
+  url       String
+  isPrimary Boolean @default(false)
+  order     Int     @default(0)
+
+  car Car @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@index([carId])
+}
+
+model CarPriceHistory {
+  id        String   @id @default(cuid())
+  carId     String
+  oldPrice  Float
+  newPrice  Float
+  field     String // "salePrice" | "purchasePrice"
+  changedBy String?
+  createdAt DateTime @default(now())
+
+  car Car @relation(fields: [carId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────
+// INCOMING CARS (Logistics)
+// status: ORDERED | IN_TRANSIT | CUSTOMS | ARRIVED
+// ─────────────────────────────────────────────────────────────
+model IncomingCar {
+  id             String    @id @default(cuid())
+  make           String
+  model          String
+  year           Int
+  supplier       String?
+  expectedDate   DateTime?
+  status         String    @default("ORDERED")
+  customsCleared Boolean   @default(false)
+  shippingDone   Boolean   @default(false)
+  cost           Float     @default(0)
+  currency       String    @default("USD")
+  notes          String?
+  carId          String?   @unique // linked Car once arrived
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  car Car? @relation(fields: [carId], references: [id])
+
+  @@index([status])
+  @@index([expectedDate])
+}
+
+// ─────────────────────────────────────────────────────────────
+// LEADS (Sales pipeline)
+// source: WEBSITE | INSTAGRAM | TELEGRAM | CALL | REFERRAL | OTHER
+// status: NEW | CONTACTED | NEGOTIATION | CONTRACT | WON | LOST
+// ─────────────────────────────────────────────────────────────
+model Lead {
+  id              String    @id @default(cuid())
+  fullName        String
+  phone           String
+  country         String?
+  source          String    @default("OTHER")
+  status          String    @default("NEW")
+  notes           String?
+  followUpAt      DateTime?
+  order           Int       @default(0)
+  interestedCarId String?
+  assignedToId    String?
+  customerId      String?
+  // Gaplashuv ma'lumotlari (oxirgi)
+  talkedAt        DateTime?
+  discussionNotes String?
+  carMake         String?
+  carModel        String?
+  carYear         Int?
+  carColor        String?
+  carInterest     String?
+  budget          String?
+  paymentType     String?
+  clientWants     String?
+  outcome         String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  interestedCar Car?               @relation(fields: [interestedCarId], references: [id])
+  assignedTo    User?              @relation(fields: [assignedToId], references: [id])
+  customer      Customer?          @relation(fields: [customerId], references: [id])
+  conversations LeadConversation[]
+
+  @@index([status])
+  @@index([assignedToId])
+  @@index([followUpAt])
+  @@index([status, followUpAt])
+  @@index([country])
+  @@index([outcome])
+  @@index([talkedAt])
+  @@index([carColor])
+}
+
+// Tashqi tizimdan keladigan qo'ng'iroq transkriptlari (POST /api/calls)
+model Call {
+  id         String   @id @default(cuid())
+  phone      String
+  transcript String   @db.Text
+  callDate   DateTime @map("call_date")
+  fileName   String   @map("file_name")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([phone])
+  @@index([callDate])
+  @@map("calls")
+}
+
+// Har bir gaplashuv/qo'ng'iroq tarixi
+model LeadConversation {
+  id              String   @id @default(cuid())
+  leadId          String
+  userId          String
+  talkedAt        DateTime @default(now())
+  discussionNotes String?
+  carMake         String?
+  carModel        String?
+  carYear         Int?
+  carColor        String?
+  carInterest     String?
+  budget          String?
+  paymentType     String?
+  clientWants     String?
+  outcome         String?
+  createdAt       DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([leadId])
+  @@index([userId])
+  @@index([talkedAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// DEALS
+// paymentType: CASH | CREDIT | INSTALLMENT | TRADEIN
+// status: ACTIVE | COMPLETED | CANCELLED
+// ─────────────────────────────────────────────────────────────
+model Deal {
+  id           String   @id @default(cuid())
+  customerId   String
+  carId        String
+  userId       String // seller
+  price        Float
+  currency     String   @default("USD")
+  paymentType  String   @default("CASH")
+  status       String   @default("ACTIVE")
+  tradeInValue Float    @default(0)
+  tradeInInfo  String?
+  profit       Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  car        Car         @relation(fields: [carId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+  contract   Contract?
+  payments   Payment[]
+  commission Commission?
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([userId])
+  @@index([customerId])
+  @@index([userId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// CONTRACTS
+// status: ACTIVE | COMPLETED | CANCELLED
+// ─────────────────────────────────────────────────────────────
+model Contract {
+  id                String    @id @default(cuid())
+  number            String    @unique
+  dealId            String    @unique
+  customerId        String
+  totalAmount       Float
+  currency          String    @default("USD")
+  paymentType       String    @default("CASH")
+  status            String    @default("ACTIVE")
+  installmentMonths Int?
+  signedAt          DateTime  @default(now())
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  deal     Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  customer Customer  @relation(fields: [customerId], references: [id])
+  payments Payment[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([customerId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// PAYMENTS (installment schedule + one-off)
+// status: PENDING | PAID | OVERDUE
+// ─────────────────────────────────────────────────────────────
+model Payment {
+  id         String    @id @default(cuid())
+  dealId     String?
+  contractId String?
+  amount     Float
+  currency   String    @default("USD")
+  dueDate    DateTime?
+  paidDate   DateTime?
+  status     String    @default("PENDING")
+  method     String? // CASH | CARD | TRANSFER
+  note       String?
+  createdAt  DateTime  @default(now())
+
+  deal     Deal?     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contract Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([paidDate])
+  @@index([contractId])
+  @@index([dealId])
+  @@index([status, paidDate])
+}
+
+// ─────────────────────────────────────────────────────────────
+// EXPENSES
+// category: RENT | SALARY | MARKETING | LOGISTICS | OTHER
+// ─────────────────────────────────────────────────────────────
+model Expense {
+  id          String   @id @default(cuid())
+  category    String   @default("OTHER")
+  amount      Float
+  currency    String   @default("UZS")
+  description String?
+  date        DateTime @default(now())
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  createdBy User? @relation(fields: [createdById], references: [id])
+
+  @@index([date])
+  @@index([category])
+  @@index([date, category])
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMMISSIONS
+// status: PENDING | PAID
+// ─────────────────────────────────────────────────────────────
+model Commission {
+  id        String   @id @default(cuid())
+  dealId    String   @unique
+  userId    String
+  amount    Float
+  currency  String   @default("USD")
+  rate      Float
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([status])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// ACTIVITY LOG (audit trail + activity feed)
+// ─────────────────────────────────────────────────────────────
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String // CREATE | UPDATE | DELETE | LOGIN | STATUS_CHANGE ...
+  entityType  String // Car | Customer | Lead | Deal | Contract ...
+  entityId    String?
+  description String
+  customerId  String?
+  createdAt   DateTime @default(now())
+
+  user     User?     @relation(fields: [userId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([createdAt])
+  @@index([customerId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPANY SETTINGS (singleton row)
+// ─────────────────────────────────────────────────────────────
+model CompanySetting {
+  id               String   @id @default("company")
+  name             String   @default("A-BOZOR Avtosalon")
+  logo             String?
+  address          String?
+  phone            String?
+  email            String?
+  usdRate          Float    @default(12650) // 1 USD in UZS
+  defaultCurrency  String   @default("USD")
+  contractTemplate String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
