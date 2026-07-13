@@ -46,7 +46,7 @@ jobs:
           az webapp config set \
             --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
             --name "${{ env.AZURE_WEBAPP_NAME }}" \
-            --startup-file "sh start.sh" \
+            --startup-file "node server.js" \
             --always-on true
 
       - name: Install and build
@@ -54,16 +54,31 @@ jobs:
           npm ci
           npm run build
 
+      - name: Push database schema
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          RULE="github-actions-${GITHUB_RUN_ID}"
+          az postgres flexible-server firewall-rule create \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --server-name mkus-crm-db-c10b30 \
+            --name "$RULE" \
+            --start-ip-address "$RUNNER_IP" \
+            --end-ip-address "$RUNNER_IP"
+          npx prisma db push --skip-generate
+          az postgres flexible-server firewall-rule delete \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --server-name mkus-crm-db-c10b30 \
+            --name "$RULE" \
+            --yes
+
       - name: Prepare standalone deploy package
         run: |
           STANDALONE=".next/standalone"
           cp -r public "$STANDALONE/public"
           cp -r .next/static "$STANDALONE/.next/static"
           cp -r prisma "$STANDALONE/prisma"
-          mkdir -p "$STANDALONE/node_modules"
-          cp -r node_modules/prisma "$STANDALONE/node_modules/prisma"
-          cp -r node_modules/@prisma "$STANDALONE/node_modules/@prisma"
-          cp -r node_modules/.prisma "$STANDALONE/node_modules/.prisma"
           cp scripts/azure-start.sh "$STANDALONE/start.sh"
           chmod +x "$STANDALONE/start.sh"
 
