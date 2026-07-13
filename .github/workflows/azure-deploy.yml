@@ -11,6 +11,7 @@ permissions:
 
 env:
   AZURE_WEBAPP_NAME: mkus-crm-fed7cd
+  AZURE_RESOURCE_GROUP: mkus-crm-rg
 
 jobs:
   build-and-deploy:
@@ -35,8 +36,41 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy to Azure Web App
+      - name: Prepare standalone deploy package
+        run: |
+          STANDALONE=".next/standalone"
+          cp -r public "$STANDALONE/public"
+          cp -r .next/static "$STANDALONE/.next/static"
+          cp -r prisma "$STANDALONE/prisma"
+          mkdir -p "$STANDALONE/node_modules"
+          cp -r node_modules/prisma "$STANDALONE/node_modules/prisma"
+          cp -r node_modules/@prisma "$STANDALONE/node_modules/@prisma"
+          cp -r node_modules/.prisma "$STANDALONE/node_modules/.prisma"
+          cp scripts/azure-start.sh "$STANDALONE/start.sh"
+          chmod +x "$STANDALONE/start.sh"
+
+      - name: Disable Oryx rebuild on Azure
+        run: |
+          az webapp config appsettings set \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.AZURE_WEBAPP_NAME }}" \
+            --settings \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+              ENABLE_ORYX_BUILD=false \
+              WEBSITE_RUN_FROM_PACKAGE=0 \
+              NODE_ENV=production \
+              WEBSITES_PORT=8080
+
+      - name: Configure startup
+        run: |
+          az webapp config set \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.AZURE_WEBAPP_NAME }}" \
+            --startup-file "sh start.sh" \
+            --always-on true
+
+      - name: Deploy pre-built package to Azure
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: .
+          package: .next/standalone
