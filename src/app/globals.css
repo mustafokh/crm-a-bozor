@@ -3,69 +3,69 @@
 @tailwind utilities;
 
 @layer base {
-  /* ── MKUS brand — clean white UI, red + royal blue accents ── */
+  /* ── MKUS brand — yorqinroq kontrast: qizil + to'q ko'k ── */
   :root {
-    --background: 220 20% 98%;
-    --foreground: 220 15% 12%;
+    --background: 220 25% 97%;
+    --foreground: 222 22% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 220 15% 12%;
+    --card-foreground: 222 22% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 12%;
-    /* Primary = MKUS royal blue */
-    --primary: 217 82% 41%;
+    --popover-foreground: 222 22% 10%;
+    /* Primary = MKUS royal blue — biroz yorqinroq */
+    --primary: 217 90% 38%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 16% 94%;
-    --secondary-foreground: 220 15% 15%;
-    --muted: 220 14% 95%;
-    --muted-foreground: 220 8% 46%;
-    --accent: 217 60% 96%;
-    --accent-foreground: 217 82% 35%;
-    --destructive: 357 82% 51%;
+    --secondary: 217 30% 93%;
+    --secondary-foreground: 217 40% 18%;
+    --muted: 220 20% 94%;
+    --muted-foreground: 220 12% 38%;
+    --accent: 217 70% 94%;
+    --accent-foreground: 217 90% 32%;
+    --destructive: 357 88% 48%;
     --destructive-foreground: 0 0% 100%;
-    --success: 152 48% 42%;
+    --success: 152 65% 36%;
     --success-foreground: 0 0% 100%;
-    --warning: 357 82% 51%;
+    --warning: 32 95% 48%;
     --warning-foreground: 0 0% 100%;
-    --border: 220 14% 90%;
-    --input: 220 14% 88%;
-    --ring: 217 82% 41%;
+    --border: 220 18% 86%;
+    --input: 220 18% 84%;
+    --ring: 217 90% 38%;
     --sidebar: 0 0% 100%;
-    --sidebar-foreground: 220 15% 12%;
+    --sidebar-foreground: 222 22% 10%;
     --radius: 1rem;
 
-    /* MKUS logo colors */
-    --brand-red: 357 82% 51%;
-    --brand-blue: 217 82% 41%;
-    --brand-blue-light: 217 75% 55%;
-    --glow: 217 82% 41%;
+    /* MKUS logo colors — yuqori kontrast */
+    --brand-red: 357 90% 48%;
+    --brand-blue: 217 90% 38%;
+    --brand-blue-light: 217 85% 52%;
+    --glow: 217 90% 45%;
   }
 
   .dark {
-    --background: 220 15% 7%;
-    --foreground: 220 10% 94%;
-    --card: 220 14% 11%;
-    --card-foreground: 220 10% 94%;
-    --popover: 220 14% 12%;
-    --popover-foreground: 220 10% 94%;
-    --primary: 217 75% 55%;
+    --background: 220 18% 6%;
+    --foreground: 210 20% 96%;
+    --card: 220 16% 10%;
+    --card-foreground: 210 20% 96%;
+    --popover: 220 16% 11%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 217 85% 58%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 12% 16%;
-    --secondary-foreground: 220 10% 94%;
-    --muted: 220 12% 15%;
-    --muted-foreground: 220 8% 58%;
-    --accent: 217 40% 18%;
-    --accent-foreground: 217 75% 70%;
-    --destructive: 357 78% 58%;
+    --secondary: 220 14% 16%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 220 12% 14%;
+    --muted-foreground: 215 12% 65%;
+    --accent: 217 45% 18%;
+    --accent-foreground: 217 85% 72%;
+    --destructive: 357 85% 55%;
     --destructive-foreground: 0 0% 100%;
-    --success: 152 50% 50%;
+    --success: 152 60% 48%;
     --success-foreground: 0 0% 100%;
-    --warning: 357 78% 58%;
+    --warning: 32 95% 55%;
     --warning-foreground: 0 0% 100%;
-    --border: 220 12% 18%;
-    --input: 220 12% 21%;
-    --ring: 217 75% 55%;
-    --sidebar: 220 15% 9%;
-    --sidebar-foreground: 220 10% 94%;
+    --border: 220 14% 20%;
+    --input: 220 14% 22%;
+    --ring: 217 85% 58%;
+    --sidebar: 220 18% 8%;
+    --sidebar-foreground: 210 20% 96%;
   }
 
   * {
@@ -81,8 +81,8 @@
     @apply bg-background text-foreground;
     font-feature-settings: "cv02", "cv03", "cv04", "ss01";
     background-image:
-      radial-gradient(900px 480px at 95% -5%, hsl(var(--brand-blue) / 0.06), transparent 55%),
-      radial-gradient(700px 420px at -5% 100%, hsl(var(--brand-red) / 0.05), transparent 50%);
+      radial-gradient(900px 480px at 95% -5%, hsl(var(--brand-blue) / 0.12), transparent 55%),
+      radial-gradient(700px 420px at -5% 100%, hsl(var(--brand-red) / 0.10), transparent 50%);
     background-attachment: fixed;
   }
 
@@ -114,16 +114,16 @@
 
   /* ── MKUS brand gradients (logo: red M → blue KUS) ── */
   .grad-warm {
-    background-image: linear-gradient(135deg, hsl(var(--brand-red)) 0%, hsl(357 75% 58%) 100%);
+    background-image: linear-gradient(135deg, hsl(var(--brand-red)) 0%, hsl(14 95% 55%) 100%);
   }
   .grad-green {
     background-image: linear-gradient(135deg, hsl(var(--brand-blue)) 0%, hsl(var(--brand-blue-light)) 100%);
   }
   .grad-violet {
-    background-image: linear-gradient(135deg, hsl(var(--brand-blue)) 0%, hsl(217 70% 62%) 100%);
+    background-image: linear-gradient(135deg, hsl(var(--brand-blue)) 0%, hsl(225 85% 58%) 100%);
   }
   .grad-dark {
-    background-image: linear-gradient(150deg, hsl(var(--brand-blue)) 0%, hsl(217 82% 32%) 100%);
+    background-image: linear-gradient(150deg, hsl(217 90% 42%) 0%, hsl(217 92% 28%) 100%);
   }
   .grad-sweep {
     background-image: linear-gradient(90deg, hsl(var(--brand-red)) 0%, hsl(var(--brand-blue)) 100%);
@@ -200,7 +200,7 @@
 
   /* Soft glow behind active elements */
   .beam {
-    box-shadow: 0 4px 14px -2px hsl(30 8% 12% / 0.35);
+    box-shadow: 0 4px 18px -2px hsl(var(--brand-blue) / 0.45);
   }
 }
 

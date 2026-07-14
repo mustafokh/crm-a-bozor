@@ -22,9 +22,9 @@ export interface DashboardAnalytics {
 }
 
 const CHANNEL_META: Record<string, { icon: LucideIcon; card: string }> = {
-  CALL: { icon: Phone, card: "border-l-[6px] border-l-blue-600 border-2 border-blue-500 bg-blue-100 text-blue-900" },
-  WHATSAPP: { icon: MessageCircle, card: "border-l-[6px] border-l-emerald-600 border-2 border-emerald-500 bg-emerald-100 text-emerald-900" },
-  TELEGRAM: { icon: Send, card: "border-l-[6px] border-l-sky-500 border-2 border-sky-400 bg-sky-100 text-sky-900" },
+  CALL: { icon: Phone, card: "border-l-[6px] border-l-blue-700 border-2 border-blue-600 bg-blue-100 text-blue-950 shadow-sm" },
+  WHATSAPP: { icon: MessageCircle, card: "border-l-[6px] border-l-green-600 border-2 border-green-500 bg-green-100 text-green-950 shadow-sm" },
+  TELEGRAM: { icon: Send, card: "border-l-[6px] border-l-[#229ED9] border-2 border-[#229ED9] bg-sky-100 text-sky-950 shadow-sm" },
 };
 
 function filterHref(params: Record<string, string>) {

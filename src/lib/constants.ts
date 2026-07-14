@@ -76,7 +76,7 @@ export const LEAD_SOURCE: Record<string, string> = {
 /** Asosiy 3 ta kanal — qo'ng'iroq, WhatsApp, Telegram */
 export const CHANNEL_SOURCES = ["CALL", "WHATSAPP", "TELEGRAM"] as const;
 
-/** Kanal ranglari — qator chap chizig'i, badge, tab (yorqin) */
+/** Kanal ranglari — yuqori kontrast, qattiq fon */
 export const CHANNEL_COLOR: Record<string, {
   line: string;
   badge: string;
@@ -85,25 +85,25 @@ export const CHANNEL_COLOR: Record<string, {
   row: string;
 }> = {
   CALL: {
-    line: "border-l-[6px] border-l-blue-600",
-    badge: "bg-blue-600 text-white border border-blue-700 shadow-sm",
-    tab: "border-2 border-blue-600 text-blue-700 hover:bg-blue-50",
-    tabActive: "bg-blue-600 text-white border-2 border-blue-700 shadow-md",
-    row: "bg-blue-100/70",
+    line: "border-l-[6px] border-l-blue-700",
+    badge: "bg-blue-700 text-white border border-blue-800 shadow-sm font-semibold",
+    tab: "border-2 border-blue-700 text-blue-800 hover:bg-blue-50 font-semibold",
+    tabActive: "bg-blue-700 text-white border-2 border-blue-900 shadow-md font-semibold",
+    row: "bg-blue-50",
   },
   WHATSAPP: {
-    line: "border-l-[6px] border-l-emerald-600",
-    badge: "bg-emerald-600 text-white border border-emerald-700 shadow-sm",
-    tab: "border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50",
-    tabActive: "bg-emerald-600 text-white border-2 border-emerald-700 shadow-md",
-    row: "bg-emerald-100/70",
+    line: "border-l-[6px] border-l-green-600",
+    badge: "bg-green-600 text-white border border-green-700 shadow-sm font-semibold",
+    tab: "border-2 border-green-600 text-green-800 hover:bg-green-50 font-semibold",
+    tabActive: "bg-green-600 text-white border-2 border-green-800 shadow-md font-semibold",
+    row: "bg-green-50",
   },
   TELEGRAM: {
-    line: "border-l-[6px] border-l-sky-500",
-    badge: "bg-sky-500 text-white border border-sky-600 shadow-sm",
-    tab: "border-2 border-sky-500 text-sky-700 hover:bg-sky-50",
-    tabActive: "bg-sky-500 text-white border-2 border-sky-600 shadow-md",
-    row: "bg-sky-100/70",
+    line: "border-l-[6px] border-l-[#229ED9]",
+    badge: "bg-[#229ED9] text-white border border-[#1a7fad] shadow-sm font-semibold",
+    tab: "border-2 border-[#229ED9] text-[#1579a8] hover:bg-sky-50 font-semibold",
+    tabActive: "bg-[#229ED9] text-white border-2 border-[#1579a8] shadow-md font-semibold",
+    row: "bg-sky-50",
   },
 };
 
@@ -127,14 +127,14 @@ export const LEAD_OUTCOME: Record<string, string> = {
 export const LEAD_OUTCOMES = Object.keys(LEAD_OUTCOME);
 
 export const LEAD_OUTCOME_COLOR: Record<string, string> = {
-  THINKING: "bg-muted text-muted-foreground",
-  CALLBACK: "bg-primary/15 text-primary",
-  NO_ANSWER: "bg-warning/15 text-warning",
-  NEGOTIATION: "bg-indigo-500/15 text-indigo-600",
-  AGREED: "bg-success/15 text-success",
-  REJECTED: "bg-destructive/15 text-destructive",
-  BOUGHT: "bg-emerald-500/15 text-emerald-700",
-  NOT_INTERESTED: "bg-rose-500/15 text-rose-600",
+  THINKING: "bg-slate-700 text-white",
+  CALLBACK: "bg-blue-700 text-white",
+  NO_ANSWER: "bg-amber-500 text-white",
+  NEGOTIATION: "bg-indigo-600 text-white",
+  AGREED: "bg-teal-600 text-white",
+  REJECTED: "bg-red-600 text-white",
+  BOUGHT: "bg-emerald-600 text-white",
+  NOT_INTERESTED: "bg-rose-600 text-white",
 };
 
 export const CALL_OUTCOME: Record<string, string> = {
@@ -147,10 +147,10 @@ export const CALL_OUTCOME: Record<string, string> = {
 export const CALL_OUTCOMES = Object.keys(CALL_OUTCOME);
 
 export const CALL_OUTCOME_COLOR: Record<string, string> = {
-  purchased: "bg-success/15 text-success",
-  not_purchased: "bg-destructive/15 text-destructive",
-  pending: "bg-warning/15 text-warning",
-  callback_needed: "bg-primary/15 text-primary",
+  purchased: "bg-emerald-600 text-white",
+  not_purchased: "bg-red-600 text-white",
+  pending: "bg-amber-500 text-white",
+  callback_needed: "bg-blue-700 text-white",
 };
 
 export const CALL_LEAD_SOURCE: Record<string, string> = {
