@@ -6,6 +6,7 @@ export type Permission =
   | "incoming"
   | "customers"
   | "leads"
+  | "calls"
   | "deals"
   | "contracts"
   | "finance"
@@ -35,6 +36,7 @@ export function permissionsFor(role: Role | string | undefined): Permission[] {
 
 export const PATH_PERMISSIONS: { prefix: string; permission: Permission }[] = [
   { prefix: "/leads", permission: "leads" },
+  { prefix: "/calls", permission: "calls" },
   { prefix: "/dashboard", permission: "dashboard" },
   { prefix: "/settings", permission: "settings" },
   { prefix: "/inventory", permission: "leads" },

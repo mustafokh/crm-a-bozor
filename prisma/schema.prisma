@@ -195,17 +195,42 @@ model Lead {
   @@index([carColor])
 }
 
-// Tashqi tizimdan keladigan qo'ng'iroq transkriptlari (POST /api/calls)
+// Tashqi tizimdan keladigan qo'ng'iroq/WhatsApp transkriptlari (POST /api/calls)
 model Call {
-  id         String   @id @default(cuid())
-  phone      String
-  transcript String   @db.Text
-  callDate   DateTime @map("call_date")
-  fileName   String   @map("file_name")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id               String   @id @default(cuid())
+  phone            String
+  country          String?
+  callDate         DateTime @map("call_date")
+  durationSeconds  Int?     @map("duration_seconds")
+  fileName         String?  @map("file_name")
+  source           String   @default("call") // call | whatsapp
+  rawTranscript    String   @map("raw_transcript") @db.Text
+
+  // AI tahlili natijalari
+  employeeName       String?  @map("employee_name")
+  customerName       String?  @map("customer_name")
+  customerIntent     String?  @map("customer_intent")
+  carModel           String?  @map("car_model")
+  carColor           String?  @map("car_color")
+  carBrand           String?  @map("car_brand")
+  outcome            String?
+  reasonPurchased    String?  @map("reason_purchased") @db.Text
+  reasonNotPurchased String?  @map("reason_not_purchased") @db.Text
+  leadSource         String?  @map("lead_source")
+  summary            String?  @db.Text
+  sentiment          String?
+  followUpNeeded     Boolean  @default(false) @map("follow_up_needed")
+  followUpNote       String?  @map("follow_up_note") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([phone])
   @@index([callDate])
+  @@index([employeeName])
+  @@index([outcome])
+  @@index([leadSource])
+  @@index([country])
+  @@index([source])
   @@map("calls")
 }
 

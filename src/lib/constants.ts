@@ -102,6 +102,43 @@ export const LEAD_OUTCOME_COLOR: Record<string, string> = {
   NOT_INTERESTED: "bg-rose-500/15 text-rose-600",
 };
 
+export const CALL_OUTCOME: Record<string, string> = {
+  purchased: "Sotib oldi",
+  not_purchased: "Sotib olmadi",
+  pending: "Kutilmoqda",
+  callback_needed: "Qayta qo'ng'iroq",
+};
+
+export const CALL_OUTCOMES = Object.keys(CALL_OUTCOME);
+
+export const CALL_OUTCOME_COLOR: Record<string, string> = {
+  purchased: "bg-success/15 text-success",
+  not_purchased: "bg-destructive/15 text-destructive",
+  pending: "bg-warning/15 text-warning",
+  callback_needed: "bg-primary/15 text-primary",
+};
+
+export const CALL_LEAD_SOURCE: Record<string, string> = {
+  website: "Sayt",
+  olx: "OLX",
+  whatsapp: "WhatsApp",
+  referral: "Tavsiya",
+  walk_in: "Ofisga kelgan",
+  other: "Boshqa",
+  unknown: "Noma'lum",
+};
+
+export const CALL_SOURCE_TYPE: Record<string, string> = {
+  call: "Qo'ng'iroq",
+  whatsapp: "WhatsApp",
+};
+
+export const CALL_SENTIMENT_COLOR: Record<string, string> = {
+  positive: "bg-success/15 text-success",
+  neutral: "bg-muted text-muted-foreground",
+  negative: "bg-destructive/15 text-destructive",
+};
+
 export const COUNTRY_OPTIONS = [
   "O'zbekiston",
   "Qozog'iston",
