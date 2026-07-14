@@ -76,6 +76,37 @@ export const LEAD_SOURCE: Record<string, string> = {
 /** Asosiy 3 ta kanal — qo'ng'iroq, WhatsApp, Telegram */
 export const CHANNEL_SOURCES = ["CALL", "WHATSAPP", "TELEGRAM"] as const;
 
+/** Kanal ranglari — qator chap chizig'i, badge, tab */
+export const CHANNEL_COLOR: Record<string, {
+  line: string;
+  badge: string;
+  tab: string;
+  tabActive: string;
+  row: string;
+}> = {
+  CALL: {
+    line: "border-l-4 border-l-blue-500",
+    badge: "bg-blue-500/15 text-blue-700 border border-blue-500/30",
+    tab: "border-blue-500/40 text-blue-700 hover:bg-blue-500/10",
+    tabActive: "bg-blue-500 text-white border-blue-500 shadow-sm",
+    row: "bg-blue-500/[0.04]",
+  },
+  WHATSAPP: {
+    line: "border-l-4 border-l-emerald-500",
+    badge: "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30",
+    tab: "border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10",
+    tabActive: "bg-emerald-500 text-white border-emerald-500 shadow-sm",
+    row: "bg-emerald-500/[0.04]",
+  },
+  TELEGRAM: {
+    line: "border-l-4 border-l-sky-500",
+    badge: "bg-sky-500/15 text-sky-700 border border-sky-500/30",
+    tab: "border-sky-500/40 text-sky-700 hover:bg-sky-500/10",
+    tabActive: "bg-sky-500 text-white border-sky-500 shadow-sm",
+    row: "bg-sky-500/[0.04]",
+  },
+};
+
 export const LEAD_STATUS: Record<string, string> = {
   NEW: "Yangi",
   ACTIVE: "Jarayonda",

@@ -21,10 +21,10 @@ export interface DashboardAnalytics {
   todayCarInterests: { label: string; carColor: string | null; carModel: string | null; count: number }[];
 }
 
-const CHANNEL_META: Record<string, { icon: LucideIcon; color: string; param: string }> = {
-  CALL: { icon: Phone, color: "border-brand-blue/30 bg-brand-blue/10 text-brand-blue", param: "CALL" },
-  WHATSAPP: { icon: MessageCircle, color: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700", param: "WHATSAPP" },
-  TELEGRAM: { icon: Send, color: "border-sky-500/30 bg-sky-500/10 text-sky-700", param: "TELEGRAM" },
+const CHANNEL_META: Record<string, { icon: LucideIcon; card: string }> = {
+  CALL: { icon: Phone, card: "border-l-4 border-l-blue-500 border-blue-500/25 bg-blue-500/10" },
+  WHATSAPP: { icon: MessageCircle, card: "border-l-4 border-l-emerald-500 border-emerald-500/25 bg-emerald-500/10" },
+  TELEGRAM: { icon: Send, card: "border-l-4 border-l-sky-500 border-sky-500/25 bg-sky-500/10" },
 };
 
 function filterHref(params: Record<string, string>) {
@@ -96,8 +96,8 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
             return (
               <Link
                 key={row.source}
-                href={filterHref({ source: meta.param, today: "1" })}
-                className={cn("rounded-xl border p-4 transition-all hover:shadow-md", meta.color)}
+                href={filterHref({ source: row.source, today: "1" })}
+                className={cn("rounded-xl border p-4 transition-all hover:shadow-md", meta.card)}
               >
                 <div className="flex items-center justify-between">
                   <Icon className="h-5 w-5 opacity-80" />
@@ -189,10 +189,10 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
             return (
               <Link
                 key={row.source}
-                href={filterHref({ source: meta.param })}
+                href={filterHref({ source: row.source })}
                 className={cn(
                   "flex items-center justify-between rounded-xl border px-4 py-3 transition-all hover:shadow-sm",
-                  meta.color
+                  meta.card
                 )}
               >
                 <div className="flex items-center gap-3">

@@ -18,6 +18,7 @@ import {
   CALL_LEAD_SOURCE,
   CALL_SOURCE_TYPE,
   CALL_SENTIMENT_COLOR,
+  CHANNEL_COLOR,
   COUNTRY_OPTIONS,
 } from "@/lib/constants";
 import { formatDateTime, cn } from "@/lib/utils";
@@ -199,10 +200,13 @@ export default function CallsPage() {
               </TR>
             </THead>
             <TBody>
-              {calls.map((c) => (
+              {calls.map((c) => {
+                const channelKey = c.source === "whatsapp" ? "WHATSAPP" : c.source === "telegram" ? "TELEGRAM" : "CALL";
+                const ch = CHANNEL_COLOR[channelKey];
+                return (
                 <TR
                   key={c.id}
-                  className="cursor-pointer hover:bg-accent/40"
+                  className={cn("cursor-pointer", ch?.line, ch?.row)}
                   onClick={() => setActive(c)}
                 >
                   <TD className="whitespace-nowrap text-sm">{formatDateTime(c.callDate)}</TD>
@@ -227,12 +231,13 @@ export default function CallsPage() {
                   <TD>{c.leadSource ? (CALL_LEAD_SOURCE[c.leadSource] ?? c.leadSource) : "—"}</TD>
                   <TD>{c.country ?? "—"}</TD>
                   <TD>
-                    <Badge className="border border-border bg-transparent text-xs">
+                    <Badge className={cn("text-xs font-medium", ch?.badge)}>
                       {CALL_SOURCE_TYPE[c.source] ?? c.source}
                     </Badge>
                   </TD>
                 </TR>
-              ))}
+                );
+              })}
             </TBody>
           </Table>
         )}

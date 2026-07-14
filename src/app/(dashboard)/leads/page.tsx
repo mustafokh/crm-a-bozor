@@ -20,7 +20,7 @@ import { useToast } from "@/components/ui/toast";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import {
   LEAD_SOURCE, LEAD_OUTCOMES, LEAD_OUTCOME_COLOR, COUNTRY_OPTIONS, CAR_COLOR_OPTIONS,
-  CHANNEL_SOURCES,
+  CHANNEL_SOURCES, CHANNEL_COLOR,
 } from "@/lib/constants";
 import { formatCarShort } from "@/lib/lead-helpers";
 import { formatDateTime, cn } from "@/lib/utils";
@@ -313,23 +313,47 @@ function LeadsPageContent() {
       <PublicLinksCard />
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <Button
-          variant={filterSource === "" ? "primary" : "outline"}
-          size="sm"
+        <button
+          type="button"
           onClick={() => setFilterSource("")}
+          className={cn(
+            "rounded-full border px-4 py-2 text-sm font-semibold transition-all",
+            filterSource === ""
+              ? "border-foreground bg-foreground text-background shadow-sm"
+              : "border-border text-muted-foreground hover:bg-secondary"
+          )}
         >
           {t("leads.allChannels")} ({sourceCounts.ALL})
-        </Button>
-        {CHANNEL_SOURCES.map((s) => (
-          <Button
-            key={s}
-            variant={filterSource === s ? "primary" : "outline"}
-            size="sm"
-            onClick={() => setFilterSource(s)}
-          >
-            {LEAD_SOURCE[s]} ({sourceCounts[s] ?? 0})
-          </Button>
-        ))}
+        </button>
+        {CHANNEL_SOURCES.map((s) => {
+          const colors = CHANNEL_COLOR[s];
+          const active = filterSource === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setFilterSource(s)}
+              className={cn(
+                "rounded-full border px-4 py-2 text-sm font-semibold transition-all",
+                active ? colors.tabActive : colors.tab
+              )}
+            >
+              {LEAD_SOURCE[s]} ({sourceCounts[s] ?? 0})
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-1 rounded-full bg-blue-500" /> Qo&apos;ng&apos;iroq
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-1 rounded-full bg-emerald-500" /> WhatsApp
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-1 rounded-full bg-sky-500" /> Telegram
+        </span>
       </div>
 
       <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center">
@@ -403,11 +427,21 @@ function LeadsPageContent() {
                   </TD>
                 </TR>
               ) : (
-                filtered.map((lead) => (
-                  <TR key={lead.id} className="cursor-pointer" onClick={() => openProfile(lead)}>
+                filtered.map((lead) => {
+                  const ch = CHANNEL_COLOR[lead.source];
+                  return (
+                  <TR
+                    key={lead.id}
+                    className={cn(
+                      "cursor-pointer",
+                      ch?.line,
+                      ch?.row
+                    )}
+                    onClick={() => openProfile(lead)}
+                  >
                     <TD className="font-medium">{lead.assignedTo?.name ?? "—"}</TD>
                     <TD>
-                      <Badge className="bg-secondary font-normal text-secondary-foreground">
+                      <Badge className={cn("font-medium", ch?.badge ?? "bg-secondary text-secondary-foreground")}>
                         {LEAD_SOURCE[lead.source] ?? lead.source}
                       </Badge>
                     </TD>
@@ -452,7 +486,8 @@ function LeadsPageContent() {
                       </div>
                     </TD>
                   </TR>
-                ))
+                  );
+                })
               )}
             </TBody>
           </Table>
