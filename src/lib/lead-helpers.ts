@@ -19,16 +19,21 @@ export function parseCarYear(value: unknown): number | null {
   return Number.isInteger(n) && n >= 1950 && n <= new Date().getFullYear() + 2 ? n : null;
 }
 
-export function buildCarInterest(data: CarTalkFields): string | null {
+/** Make + model + year (rang alohida badge bilan ko‘rsatiladi) */
+export function formatCarModel(data: CarTalkFields): string {
   const parts: string[] = [];
   if (data.carMake?.trim()) parts.push(data.carMake.trim());
   if (data.carModel?.trim()) parts.push(data.carModel.trim());
   if (data.carYear) parts.push(String(data.carYear));
-  let line = parts.join(" ");
+  return parts.join(" ").trim();
+}
+
+export function buildCarInterest(data: CarTalkFields): string | null {
+  const model = formatCarModel(data);
   if (data.carColor?.trim()) {
-    line = line ? `${line} · ${data.carColor.trim()}` : data.carColor.trim();
+    return model ? `${model} · ${data.carColor.trim()}` : data.carColor.trim();
   }
-  if (line) return line;
+  if (model) return model;
   return data.carInterest?.trim() || null;
 }
 
@@ -54,8 +59,9 @@ export function extractTalkFields(body: Record<string, unknown>) {
   };
 }
 
+/** Jadval/UI: faqat mashina (rang CarColorBadge da) */
 export function formatCarShort(data: CarTalkFields): string {
-  return buildCarInterest(data) ?? "—";
+  return formatCarModel(data) || data.carInterest?.trim() || "—";
 }
 
 export function hasTalkContent(fields: ReturnType<typeof extractTalkFields>, talkedAt?: unknown) {

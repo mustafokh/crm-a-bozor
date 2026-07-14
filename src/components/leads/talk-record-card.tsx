@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { CarColorBadge } from "@/components/ui/car-color-badge";
 import { useI18n } from "@/components/language-provider";
 import { LEAD_OUTCOME_COLOR, PAYMENT_TYPE } from "@/lib/constants";
 import { formatCarShort } from "@/lib/lead-helpers";
@@ -54,9 +55,14 @@ export function TalkRecordCard({ record, compact }: { record: TalkRecord; compac
         )}
       </div>
 
-      <div className="grid gap-1.5 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         <Field label={t("leads.col.carInterest")} value={formatCarShort(record)} />
-        <Field label={t("leads.col.carColor")} value={record.carColor} />
+        {record.carColor ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">{t("leads.col.carColor")}:</span>
+            <CarColorBadge color={record.carColor} />
+          </div>
+        ) : null}
         <Field label={t("leads.col.budget")} value={record.budget} />
         <Field
           label={t("leads.col.payment")}

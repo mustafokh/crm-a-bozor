@@ -1,10 +1,12 @@
 "use client";
 
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { CarColorBadge } from "@/components/ui/car-color-badge";
 import { useI18n } from "@/components/language-provider";
 import {
   CAR_COLOR_OPTIONS, CAR_MAKE_OPTIONS, LEAD_OUTCOMES, PAYMENT_TYPE,
 } from "@/lib/constants";
+import { resolveCarColor } from "@/lib/car-color";
 
 export interface TalkFormState {
   carMake: string;
@@ -103,9 +105,16 @@ export function TalkFields({
           <Select value={value.carColor} onChange={(e) => set({ carColor: e.target.value })}>
             <option value="">{t("common.select")}</option>
             {CAR_COLOR_OPTIONS.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>
+                {resolveCarColor(c)?.labelEn ?? c}
+              </option>
             ))}
           </Select>
+          {value.carColor && (
+            <div className="mt-2">
+              <CarColorBadge color={value.carColor} showLocal size="lg" />
+            </div>
+          )}
         </div>
         <div>
           <Label>{t("leads.col.budget")}</Label>

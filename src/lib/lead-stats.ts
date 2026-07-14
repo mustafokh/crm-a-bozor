@@ -13,10 +13,8 @@ function todayStart() {
   return d;
 }
 
-function carLabel(make: string | null, model: string | null, color: string | null) {
+function carLabel(make: string | null, model: string | null, _color?: string | null) {
   const parts = [make, model].filter(Boolean).join(" ").trim();
-  if (color && parts) return `${color} ${parts}`;
-  if (color) return color;
   return parts || "—";
 }
 
@@ -181,8 +179,8 @@ export async function leadDashboardStats(userId?: string, role?: string) {
   ) {
     const map = new Map<string, { label: string; carColor: string | null; carModel: string | null; count: number }>();
     for (const row of leadRows) {
-      const label = carLabel(row.carMake, row.carModel, row.carColor);
-      const key = label.toLowerCase();
+      const label = carLabel(row.carMake, row.carModel);
+      const key = `${(row.carColor ?? "").toLowerCase()}|${label.toLowerCase()}`;
       const prev = map.get(key);
       map.set(key, {
         label,
@@ -193,8 +191,8 @@ export async function leadDashboardStats(userId?: string, role?: string) {
     }
     if (useBrand) {
       for (const row of callRows) {
-        const label = carLabel(row.carBrand, row.carModel, row.carColor);
-        const key = label.toLowerCase();
+        const label = carLabel(row.carBrand, row.carModel);
+        const key = `${(row.carColor ?? "").toLowerCase()}|${label.toLowerCase()}`;
         const prev = map.get(key);
         map.set(key, {
           label,
@@ -312,6 +310,19 @@ export async function leadDashboardStats(userId?: string, role?: string) {
       .slice(0, 10),
     topCarInterests: mergeCarGroups(leadCarGroups, [], false).slice(0, 10),
     todayCarInterests: mergeCarGroups(todayLeadCarGroups, callCarGroupsToday, true).slice(0, 10),
+    byColor: (() => {
+      const map = new Map<string, { color: string; count: number }>();
+      for (const row of leadCarGroups) {
+        if (!row.carColor?.trim()) continue;
+        const key = row.carColor.trim().toLowerCase();
+        const prev = map.get(key);
+        map.set(key, {
+          color: row.carColor.trim(),
+          count: (prev?.count ?? 0) + row._count.id,
+        });
+      }
+      return [...map.values()].sort((a, b) => b.count - a.count).slice(0, 12);
+    })(),
     weeklyTrend,
     recentLeads: await prisma.lead.findMany({
       where,

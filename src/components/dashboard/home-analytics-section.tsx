@@ -3,17 +3,23 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import {
-  Phone, MessageCircle, Send, Users, Car, ChevronRight, TrendingUp,
+  Phone, MessageCircle, Send, Users, Car, ChevronRight, TrendingUp, Globe, Palette,
 } from "lucide-react";
 import { useI18n } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
 import { LEAD_SOURCE } from "@/lib/constants";
 import { CountUp } from "@/components/count-up";
 import { DualLine, BarsChart, DonutChart } from "@/components/charts";
+import { CarColorBadge } from "@/components/ui/car-color-badge";
+import { CountryBadge } from "@/components/ui/country-badge";
+import { resolveCarColor } from "@/lib/car-color";
 import type { LucideIcon } from "lucide-react";
 
 export interface DashboardAnalytics {
   bySource: { source: string; count: number }[];
+  byCountry: { country: string; count: number }[];
+  byOutcome: { outcome: string; count: number }[];
+  byColor: { color: string; count: number }[];
   todayByChannel: { source: string; count: number }[];
   todayCallsTotal: number;
   todayLeadTalks: number;
@@ -45,6 +51,14 @@ function filterHref(params: Record<string, string>) {
 function pct(part: number, total: number) {
   if (!total) return 0;
   return Math.round((part / total) * 100);
+}
+
+function carBarName(c: { label: string; carColor: string | null }) {
+  const en = resolveCarColor(c.carColor)?.labelEn;
+  const model = c.label !== "—" ? c.label : "";
+  if (en && model) return `${en} ${model}`;
+  if (en) return en;
+  return model || "—";
 }
 
 /** Animatsiyali ring foizi */
@@ -104,6 +118,14 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
     () => stats.todayByChannel.reduce((s, r) => s + r.count, 0) || stats.todayTalks,
     [stats.todayByChannel, stats.todayTalks]
   );
+  const colorTotal = useMemo(
+    () => (stats.byColor ?? []).reduce((s, r) => s + r.count, 0),
+    [stats.byColor]
+  );
+  const countryTotal = useMemo(
+    () => (stats.byCountry ?? []).reduce((s, r) => s + r.count, 0),
+    [stats.byCountry]
+  );
 
   const donutData = stats.bySource
     .filter((r) => r.count > 0)
@@ -114,19 +136,25 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
     value: e.count,
   }));
 
-  const carBars = (stats.todayCarInterests.length > 0 ? stats.todayCarInterests : stats.topCarInterests)
-    .slice(0, 5)
-    .map((c) => ({
-      name: c.label.length > 18 ? `${c.label.slice(0, 16)}…` : c.label,
+  const carRows = (stats.todayCarInterests.length > 0 ? stats.todayCarInterests : stats.topCarInterests).slice(0, 6);
+  const carBars = carRows.map((c) => {
+    const full = carBarName(c);
+    return {
+      name: full.length > 16 ? `${full.slice(0, 14)}…` : full,
       value: c.count,
-      full: c.label,
+      full,
       color: c.carColor,
       model: c.carModel,
-    }));
+      label: c.label,
+    };
+  });
 
   const week = stats.weeklyTrend ?? [];
   const topToday = stats.topTodayChannel;
   const topChannelName = topToday?.source ? LEAD_SOURCE[topToday.source] : null;
+  const byColor = stats.byColor ?? [];
+  const byCountry = stats.byCountry ?? [];
+  const byOutcome = stats.byOutcome ?? [];
 
   return (
     <div className="space-y-6">
@@ -242,6 +270,78 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
         </section>
       </div>
 
+      {/* Rang + davlat */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="fade-up rounded-3xl border border-border bg-card p-5 shadow-soft" style={{ animationDelay: "140ms" }}>
+          <div className="mb-3 flex items-center gap-2">
+            <Palette className="h-5 w-5 text-rose-600" />
+            <h3 className="font-semibold">{t("home.analytics.topColors")}</h3>
+          </div>
+          <p className="mb-4 text-sm text-muted-foreground">{t("home.analytics.topColorsDesc")}</p>
+          {byColor.length > 0 ? (
+            <div className="space-y-2">
+              {byColor.slice(0, 8).map((row) => {
+                const share = pct(row.count, colorTotal);
+                return (
+                  <Link
+                    key={row.color}
+                    href={filterHref({ color: row.color })}
+                    className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 px-3 py-2.5 transition hover:border-rose-300 hover:bg-rose-50/50"
+                  >
+                    <CarColorBadge color={row.color} size="lg" />
+                    <div className="min-w-0 flex-1">
+                      <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${Math.max(share, 4)}%`,
+                            backgroundColor: resolveCarColor(row.color)?.hex ?? "#64748B",
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-sm font-bold tabular-nums">
+                      {row.count} · {share}%
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="py-10 text-center text-sm text-muted-foreground">{t("home.analytics.noCarData")}</p>
+          )}
+        </section>
+
+        <section className="fade-up rounded-3xl border border-border bg-card p-5 shadow-soft" style={{ animationDelay: "160ms" }}>
+          <div className="mb-3 flex items-center gap-2">
+            <Globe className="h-5 w-5 text-cyan-600" />
+            <h3 className="font-semibold">{t("home.analytics.byCountry")}</h3>
+          </div>
+          <p className="mb-4 text-sm text-muted-foreground">{t("home.analytics.byCountryDesc")}</p>
+          {byCountry.length > 0 ? (
+            <div className="space-y-2">
+              {byCountry.slice(0, 8).map((row) => {
+                const share = pct(row.count, countryTotal);
+                return (
+                  <Link
+                    key={row.country}
+                    href={filterHref({ country: row.country })}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-muted/20 px-3 py-2.5 transition hover:border-cyan-300 hover:bg-cyan-50/50"
+                  >
+                    <CountryBadge country={row.country} />
+                    <span className="text-sm font-bold tabular-nums">
+                      {row.count} · {share}%
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="py-10 text-center text-sm text-muted-foreground">{t("home.analytics.noDataToday")}</p>
+          )}
+        </section>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="fade-up rounded-3xl border border-border bg-card p-5 shadow-soft" style={{ animationDelay: "160ms" }}>
           <div className="mb-3 flex items-center justify-between">
@@ -291,17 +391,23 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
               <div className="mt-3 space-y-2">
                 {carBars.map((c) => (
                   <Link
-                    key={c.full}
+                    key={`${c.color ?? ""}-${c.full}`}
                     href={filterHref({
                       ...(c.color ? { color: c.color } : {}),
-                      ...(c.model ? { car: c.model } : {}),
+                      ...(c.model ? { car: c.model } : c.label && c.label !== "—" ? { car: c.label } : {}),
                     })}
-                    className="flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-950 transition hover:bg-amber-100"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-950 transition hover:bg-amber-100"
                   >
-                    <span className="truncate">
-                      {t("home.analytics.carInterestLine", { count: String(c.value), car: c.full })}
+                    <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                      {c.color ? <CarColorBadge color={c.color} size="lg" /> : null}
+                      <span className="truncate font-semibold">
+                        {c.label !== "—" ? c.label : c.model || t("home.analytics.colorOnly")}
+                      </span>
                     </span>
-                    <ChevronRight className="h-4 w-4 shrink-0" />
+                    <span className="flex shrink-0 items-center gap-1 font-bold tabular-nums">
+                      {c.value}
+                      <ChevronRight className="h-4 w-4" />
+                    </span>
                   </Link>
                 ))}
               </div>
@@ -312,7 +418,26 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
         </section>
       </div>
 
-      {/* Jami kanallar — yorqin */}
+      {/* Natijalar */}
+      {byOutcome.length > 0 && (
+        <section className="fade-up rounded-3xl border border-border bg-card p-5 shadow-soft" style={{ animationDelay: "220ms" }}>
+          <h3 className="mb-3 font-semibold">{t("home.analytics.byOutcome")}</h3>
+          <div className="flex flex-wrap gap-2">
+            {byOutcome.map((o) => (
+              <Link
+                key={o.outcome}
+                href={filterHref({ outcome: o.outcome })}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-sm transition hover:border-primary/40 hover:bg-primary/5"
+              >
+                <span>{t(`enum.leadOutcome.${o.outcome}`) || o.outcome}</span>
+                <span className="font-bold tabular-nums">{o.count}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Jami kanallar */}
       <section className="fade-up" style={{ animationDelay: "240ms" }}>
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
           {t("home.analytics.allTimeTitle")}

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ChevronRight, Phone } from "lucide-react";
 import { useI18n } from "@/components/language-provider";
 import { Badge } from "@/components/ui/badge";
+import { CarColorBadge } from "@/components/ui/car-color-badge";
+import { CountryBadge } from "@/components/ui/country-badge";
 import { LEAD_OUTCOME_COLOR } from "@/lib/constants";
 import { formatCarShort } from "@/lib/lead-helpers";
 import { formatDateTime, cn } from "@/lib/utils";
@@ -34,20 +36,18 @@ export function HomeRecentLeads({ leads }: { leads: HomeStats["recentLeads"] }) 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold">{lead.fullName}</span>
-              {lead.country && (
-                <span className="text-xs text-muted-foreground">{lead.country}</span>
-              )}
+              <CountryBadge country={lead.country} phone={lead.phone} />
               {lead.outcome && (
                 <Badge className={cn("text-xs font-normal", LEAD_OUTCOME_COLOR[lead.outcome])}>
                   {t(`enum.leadOutcome.${lead.outcome}`) || lead.outcome}
                 </Badge>
               )}
             </div>
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">
-              {formatCarShort(lead)}
-              {lead.carColor && lead.carColor !== "—" && ` · ${lead.carColor}`}
-              {lead.assignedTo?.name && ` · ${lead.assignedTo.name}`}
-            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span className="truncate">{formatCarShort(lead)}</span>
+              {lead.carColor && lead.carColor !== "—" && <CarColorBadge color={lead.carColor} />}
+              {lead.assignedTo?.name && <span>· {lead.assignedTo.name}</span>}
+            </div>
             {lead.talkedAt && (
               <p className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(lead.talkedAt)}</p>
             )}

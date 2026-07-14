@@ -18,6 +18,7 @@ export interface HomeStats {
   byEmployee: { id: string | null; name: string; count: number }[];
   byCountry: { country: string; count: number }[];
   byOutcome: { outcome: string; count: number }[];
+  byColor?: { color: string; count: number }[];
   bySource: { source: string; count: number }[];
   todayByChannel: { source: string; count: number }[];
   todayByEmployee: { name: string; count: number }[];

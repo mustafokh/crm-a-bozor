@@ -18,6 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { CarColorBadge } from "@/components/ui/car-color-badge";
+import { CountryBadge } from "@/components/ui/country-badge";
 import {
   LEAD_SOURCE, LEAD_OUTCOMES, LEAD_OUTCOME_COLOR, COUNTRY_OPTIONS, CAR_COLOR_OPTIONS,
   CHANNEL_SOURCES, CHANNEL_COLOR,
@@ -452,13 +454,13 @@ function LeadsPageContent() {
                         {lead.phone}
                       </a>
                     </TD>
-                    <TD>{lead.country ?? "—"}</TD>
+                    <TD>
+                      <CountryBadge country={lead.country} phone={lead.phone} />
+                    </TD>
                     <TD className="whitespace-nowrap text-sm">{formatDateTime(lead.talkedAt)}</TD>
                     <TD className="max-w-[140px] text-sm">{truncate(formatCarShort(lead), 28)}</TD>
                     <TD>
-                      {lead.carColor ? (
-                        <Badge className="font-normal bg-secondary text-secondary-foreground">{lead.carColor}</Badge>
-                      ) : "—"}
+                      <CarColorBadge color={lead.carColor} />
                     </TD>
                     <TD className="text-sm">{lead.budget ?? "—"}</TD>
                     <TD className="max-w-[140px] text-sm text-muted-foreground">{truncate(lead.discussionNotes)}</TD>
@@ -565,7 +567,9 @@ function LeadsPageContent() {
           <div className="mb-4 rounded-xl bg-muted/30 p-3 text-sm">
             <span className="font-semibold">{activeLead.fullName}</span>
             <span className="text-muted-foreground"> · {activeLead.phone}</span>
-            {activeLead.country && <span className="text-muted-foreground"> · {activeLead.country}</span>}
+            <span className="ml-2 inline-flex align-middle">
+              <CountryBadge country={activeLead.country} phone={activeLead.phone} />
+            </span>
           </div>
         )}
         <div className="mb-4 grid gap-3 sm:grid-cols-2">
@@ -605,10 +609,10 @@ function LeadsPageContent() {
                   <h3 className="text-lg font-semibold">{activeLead.fullName}</h3>
                   <p className="text-sm text-muted-foreground">
                     {activeLead.phone}
-                    {activeLead.country && ` · ${activeLead.country}`}
                     {activeLead.assignedTo?.name && ` · ${activeLead.assignedTo.name}`}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <CountryBadge country={activeLead.country} phone={activeLead.phone} />
                     {activeLead.outcome && (
                       <Badge className={cn("font-normal", LEAD_OUTCOME_COLOR[activeLead.outcome])}>
                         {outcomeLabel(activeLead.outcome)}
