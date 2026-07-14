@@ -30,7 +30,7 @@ export function can(role: Role | string | undefined, permission: Permission): bo
 }
 
 export function permissionsFor(role: Role | string | undefined): Permission[] {
-  const nav: Permission[] = ["dashboard", "leads", "settings"];
+  const nav: Permission[] = ["dashboard", "leads", "calls", "settings"];
   return nav.filter((p) => can(role, p));
 }
 
