@@ -12,11 +12,16 @@ import type { LucideIcon } from "lucide-react";
 export interface HomeStats {
   total: number;
   todayTalks: number;
+  todayCallsTotal: number;
   unassigned: number;
   active: number;
-  byEmployee: { name: string; count: number }[];
+  byEmployee: { id: string | null; name: string; count: number }[];
   byCountry: { country: string; count: number }[];
   byOutcome: { outcome: string; count: number }[];
+  bySource: { source: string; count: number }[];
+  todayByChannel: { source: string; count: number }[];
+  todayByEmployee: { name: string; count: number }[];
+  topCarInterests: { label: string; carColor: string | null; carModel: string | null; count: number }[];
   recentLeads: {
     id: string;
     fullName: string;
@@ -43,7 +48,7 @@ interface Feature {
   accent: string;
   external?: boolean;
   adminOnly?: boolean;
-  preview?: { label: string; value: number }[];
+  preview?: { label: string; value: number; href?: string }[];
 }
 
 export function HomeFeatureGrid({
@@ -96,12 +101,16 @@ export function HomeFeatureGrid({
     },
     {
       id: "employees",
-      href: "/leads",
+      href: "/leads?today=1",
       icon: Users,
       titleKey: "home.features.employees.title",
       descKey: "home.features.employees.desc",
       stat: stats.byEmployee.length,
-      preview: stats.byEmployee.slice(0, 3).map((e) => ({ label: e.name, value: e.count })),
+      preview: stats.byEmployee.slice(0, 3).map((e) => ({
+        label: e.name,
+        value: e.count,
+        href: e.id ? `/leads?employee=${e.id}` : "/leads?unassigned=1",
+      })),
       accent: "from-indigo-500/15 to-indigo-500/5 border-indigo-500/20 hover:border-indigo-500/40",
     },
     {
@@ -111,7 +120,11 @@ export function HomeFeatureGrid({
       titleKey: "home.features.countries.title",
       descKey: "home.features.countries.desc",
       stat: stats.byCountry.length,
-      preview: stats.byCountry.slice(0, 3).map((c) => ({ label: c.country, value: c.count })),
+      preview: stats.byCountry.slice(0, 3).map((c) => ({
+        label: c.country,
+        value: c.count,
+        href: `/leads?country=${encodeURIComponent(c.country)}`,
+      })),
       accent: "from-cyan-500/15 to-cyan-500/5 border-cyan-500/20 hover:border-cyan-500/40",
     },
     {
@@ -125,6 +138,7 @@ export function HomeFeatureGrid({
       preview: stats.byOutcome.slice(0, 3).map((o) => ({
         label: t(`enum.leadOutcome.${o.outcome}`) || o.outcome,
         value: o.count,
+        href: `/leads?outcome=${encodeURIComponent(o.outcome)}`,
       })),
       accent: "from-violet-500/15 to-violet-500/5 border-violet-500/20 hover:border-violet-500/40",
     },
@@ -184,10 +198,22 @@ export function HomeFeatureGrid({
             {f.preview && f.preview.length > 0 && (
               <div className="mt-3 space-y-1 border-t border-border/50 pt-3">
                 {f.preview.map((p) => (
-                  <div key={p.label} className="flex justify-between text-xs text-muted-foreground">
-                    <span className="truncate">{p.label}</span>
-                    <span className="font-medium text-foreground">{p.value}</span>
-                  </div>
+                  p.href ? (
+                    <Link
+                      key={p.label}
+                      href={p.href}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex justify-between text-xs text-muted-foreground hover:text-primary"
+                    >
+                      <span className="truncate">{p.label}</span>
+                      <span className="font-medium text-foreground">{p.value}</span>
+                    </Link>
+                  ) : (
+                    <div key={p.label} className="flex justify-between text-xs text-muted-foreground">
+                      <span className="truncate">{p.label}</span>
+                      <span className="font-medium text-foreground">{p.value}</span>
+                    </div>
+                  )
                 ))}
               </div>
             )}

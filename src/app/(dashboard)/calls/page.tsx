@@ -169,6 +169,7 @@ export default function CallsPage() {
             <option value="">{t("calls.allSources")}</option>
             <option value="call">{CALL_SOURCE_TYPE.call}</option>
             <option value="whatsapp">{CALL_SOURCE_TYPE.whatsapp}</option>
+            <option value="telegram">{CALL_SOURCE_TYPE.telegram}</option>
           </Select>
         </div>
       </Card>

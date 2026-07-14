@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/api-auth";
 import { normalizePhone } from "@/lib/phone";
 import { detectCountryFromPhone } from "@/lib/calls/phone-country";
 import { analyzeTranscript } from "@/lib/calls/analyze-transcript";
+import { syncCallToLead } from "@/lib/calls/sync-lead";
 
 interface CallPayload {
   phone?: string;
@@ -20,7 +21,7 @@ const MAX_BODY_BYTES = 512 * 1024;
 const MAX_TRANSCRIPT_LEN = 100_000;
 const MAX_FILE_NAME_LEN = 255;
 const MAX_PHONE_LEN = 32;
-const VALID_SOURCES = new Set(["call", "whatsapp"]);
+const VALID_SOURCES = new Set(["call", "whatsapp", "telegram"]);
 
 function parseCallDate(value: string): Date | null {
   const d = new Date(value);
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
   else if (rawTranscript.length > MAX_TRANSCRIPT_LEN) fields.raw_transcript = "Transkript juda uzun";
   if (fileName && fileName.length > MAX_FILE_NAME_LEN) fields.file_name = "Fayl nomi juda uzun";
   if (!callDateRaw) fields.call_date = "Qo'ng'iroq sanasi talab qilinadi";
-  if (!VALID_SOURCES.has(sourceRaw)) fields.source = "Manba call yoki whatsapp bo'lishi kerak";
+  if (!VALID_SOURCES.has(sourceRaw)) fields.source = "Manba call, whatsapp yoki telegram bo'lishi kerak";
 
   const callDate = callDateRaw ? parseCallDate(callDateRaw) : null;
   if (callDateRaw && !callDate) {
@@ -110,10 +111,21 @@ export async function POST(req: Request) {
     },
   });
 
+  const lead = await syncCallToLead({
+    phone,
+    country,
+    callDate: callDate!,
+    channelSource: sourceRaw,
+    analysis,
+    rawTranscript,
+    callId: call.id,
+  });
+
   return NextResponse.json(
     {
       ok: true,
       id: call.id,
+      lead_id: lead.id,
       country: call.country,
       analysis: {
         employee_name: call.employeeName,

@@ -67,10 +67,14 @@ export const LEAD_SOURCE: Record<string, string> = {
   WEBSITE: "Sayt",
   INSTAGRAM: "Instagram",
   TELEGRAM: "Telegram",
+  WHATSAPP: "WhatsApp",
   CALL: "Qo'ng'iroq",
   REFERRAL: "Tavsiya",
   OTHER: "Boshqa",
 };
+
+/** Asosiy 3 ta kanal — qo'ng'iroq, WhatsApp, Telegram */
+export const CHANNEL_SOURCES = ["CALL", "WHATSAPP", "TELEGRAM"] as const;
 
 export const LEAD_STATUS: Record<string, string> = {
   NEW: "Yangi",
@@ -131,6 +135,7 @@ export const CALL_LEAD_SOURCE: Record<string, string> = {
 export const CALL_SOURCE_TYPE: Record<string, string> = {
   call: "Qo'ng'iroq",
   whatsapp: "WhatsApp",
+  telegram: "Telegram",
 };
 
 export const CALL_SENTIMENT_COLOR: Record<string, string> = {

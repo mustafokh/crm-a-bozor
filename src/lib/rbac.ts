@@ -16,8 +16,8 @@ export type Permission =
 
 const ROLE_PERMISSIONS: Record<Role, Permission[] | "*"> = {
   ADMIN: "*",
-  MANAGER: ["dashboard", "leads"],
-  ACCOUNTANT: ["dashboard", "leads"],
+  MANAGER: ["dashboard", "leads", "calls"],
+  ACCOUNTANT: ["dashboard", "leads", "calls"],
   WAREHOUSE: ["dashboard", "leads"],
 };
 

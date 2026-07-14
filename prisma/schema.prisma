@@ -184,6 +184,7 @@ model Lead {
   assignedTo    User?              @relation(fields: [assignedToId], references: [id])
   customer      Customer?          @relation(fields: [customerId], references: [id])
   conversations LeadConversation[]
+  calls         Call[]
 
   @@index([status])
   @@index([assignedToId])
@@ -193,6 +194,8 @@ model Lead {
   @@index([outcome])
   @@index([talkedAt])
   @@index([carColor])
+  @@index([source])
+  @@index([carModel])
 }
 
 // Tashqi tizimdan keladigan qo'ng'iroq/WhatsApp transkriptlari (POST /api/calls)
@@ -203,7 +206,7 @@ model Call {
   callDate         DateTime @map("call_date")
   durationSeconds  Int?     @map("duration_seconds")
   fileName         String?  @map("file_name")
-  source           String   @default("call") // call | whatsapp
+  source           String   @default("call") // call | whatsapp | telegram
   rawTranscript    String   @map("raw_transcript") @db.Text
 
   // AI tahlili natijalari
@@ -222,6 +225,9 @@ model Call {
   followUpNeeded     Boolean  @default(false) @map("follow_up_needed")
   followUpNote       String?  @map("follow_up_note") @db.Text
 
+  leadId    String? @map("lead_id")
+  lead      Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([phone])
@@ -231,6 +237,7 @@ model Call {
   @@index([leadSource])
   @@index([country])
   @@index([source])
+  @@index([leadId])
   @@map("calls")
 }
 

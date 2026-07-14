@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/toast";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import {
   LEAD_SOURCE, LEAD_OUTCOMES, LEAD_OUTCOME_COLOR, COUNTRY_OPTIONS, CAR_COLOR_OPTIONS,
+  CHANNEL_SOURCES,
 } from "@/lib/constants";
 import { formatCarShort } from "@/lib/lead-helpers";
 import { formatDateTime, cn } from "@/lib/utils";
@@ -76,6 +77,8 @@ function LeadsPageContent() {
   const [errors, setErrors] = useState<Errors>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [filterSource, setFilterSource] = useState("");
+  const [filterCar, setFilterCar] = useState("");
   const [filterEmployee, setFilterEmployee] = useState("");
   const [filterCountry, setFilterCountry] = useState("");
   const [filterColor, setFilterColor] = useState("");
@@ -110,6 +113,18 @@ function LeadsPageContent() {
     }
     if (searchParams.get("today") === "1") setFilterToday(true);
     if (searchParams.get("unassigned") === "1") setFilterUnassigned(true);
+    const source = searchParams.get("source");
+    if (source) setFilterSource(source);
+    const employee = searchParams.get("employee");
+    if (employee) setFilterEmployee(employee);
+    const country = searchParams.get("country");
+    if (country) setFilterCountry(country);
+    const outcome = searchParams.get("outcome");
+    if (outcome) setFilterOutcome(outcome);
+    const color = searchParams.get("color");
+    if (color) setFilterColor(color);
+    const car = searchParams.get("car");
+    if (car) setFilterCar(car);
     const leadId = searchParams.get("id");
     if (leadId && leads.length > 0) {
       const lead = leads.find((l) => l.id === leadId);
@@ -130,10 +145,16 @@ function LeadsPageContent() {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     return leads.filter((l) => {
+      if (filterSource && l.source !== filterSource) return false;
       if (filterEmployee && l.assignedToId !== filterEmployee) return false;
       if (filterCountry && l.country !== filterCountry) return false;
       if (filterColor && l.carColor !== filterColor) return false;
       if (filterOutcome && l.outcome !== filterOutcome) return false;
+      if (filterCar) {
+        const carQ = filterCar.toLowerCase();
+        const hay = `${l.carMake ?? ""} ${l.carModel ?? ""} ${l.carInterest ?? ""}`.toLowerCase();
+        if (!hay.includes(carQ)) return false;
+      }
       if (filterUnassigned && l.assignedToId) return false;
       if (filterToday) {
         if (!l.talkedAt || new Date(l.talkedAt) < todayStart) return false;
@@ -150,7 +171,15 @@ function LeadsPageContent() {
         (l.clientWants ?? "").toLowerCase().includes(q)
       );
     });
-  }, [leads, search, filterEmployee, filterCountry, filterColor, filterOutcome, filterToday, filterUnassigned]);
+  }, [leads, search, filterSource, filterEmployee, filterCountry, filterColor, filterOutcome, filterCar, filterToday, filterUnassigned]);
+
+  const sourceCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: leads.length };
+    for (const s of CHANNEL_SOURCES) {
+      counts[s] = leads.filter((l) => l.source === s).length;
+    }
+    return counts;
+  }, [leads]);
 
   function openCreate() {
     setEditId(null);
@@ -283,6 +312,26 @@ function LeadsPageContent() {
 
       <PublicLinksCard />
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Button
+          variant={filterSource === "" ? "primary" : "outline"}
+          size="sm"
+          onClick={() => setFilterSource("")}
+        >
+          {t("leads.allChannels")} ({sourceCounts.ALL})
+        </Button>
+        {CHANNEL_SOURCES.map((s) => (
+          <Button
+            key={s}
+            variant={filterSource === s ? "primary" : "outline"}
+            size="sm"
+            onClick={() => setFilterSource(s)}
+          >
+            {LEAD_SOURCE[s]} ({sourceCounts[s] ?? 0})
+          </Button>
+        ))}
+      </div>
+
       <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center">
         <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -317,6 +366,12 @@ function LeadsPageContent() {
             <option key={o} value={o}>{outcomeLabel(o)}</option>
           ))}
         </Select>
+        <Select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} className="xl:w-40">
+          <option value="">{t("leads.filterSource")}</option>
+          {Object.entries(LEAD_SOURCE).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </Select>
       </div>
 
       {loading ? (
@@ -327,6 +382,7 @@ function LeadsPageContent() {
             <THead>
               <TR>
                 <TH>{t("leads.col.employee")}</TH>
+                <TH>{t("leads.col.source")}</TH>
                 <TH>{t("leads.col.client")}</TH>
                 <TH>{t("col.phone")}</TH>
                 <TH>{t("leads.col.country")}</TH>
@@ -342,7 +398,7 @@ function LeadsPageContent() {
             <TBody>
               {filtered.length === 0 ? (
                 <TR>
-                  <TD colSpan={11} className="py-12 text-center text-muted-foreground">
+                  <TD colSpan={12} className="py-12 text-center text-muted-foreground">
                     {t("leads.empty")}
                   </TD>
                 </TR>
@@ -350,6 +406,11 @@ function LeadsPageContent() {
                 filtered.map((lead) => (
                   <TR key={lead.id} className="cursor-pointer" onClick={() => openProfile(lead)}>
                     <TD className="font-medium">{lead.assignedTo?.name ?? "—"}</TD>
+                    <TD>
+                      <Badge className="bg-secondary font-normal text-secondary-foreground">
+                        {LEAD_SOURCE[lead.source] ?? lead.source}
+                      </Badge>
+                    </TD>
                     <TD>{lead.fullName}</TD>
                     <TD onClick={(e) => e.stopPropagation()}>
                       <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1 text-primary hover:underline">

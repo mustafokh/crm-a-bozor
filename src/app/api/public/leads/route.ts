@@ -5,7 +5,7 @@ import { normalizePhone } from "@/lib/phone";
 import { logActivity } from "@/lib/api-auth";
 import { extractTalkFields } from "@/lib/lead-helpers";
 
-const VALID_SOURCES = ["WEBSITE", "INSTAGRAM", "TELEGRAM", "CALL", "REFERRAL", "OTHER"];
+const VALID_SOURCES = ["WEBSITE", "INSTAGRAM", "TELEGRAM", "WHATSAPP", "CALL", "REFERRAL", "OTHER"];
 const MAX_BODY_BYTES = 16_384;
 
 /** Public lead application — no auth required. */

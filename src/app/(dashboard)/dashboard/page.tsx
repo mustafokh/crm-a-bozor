@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { HomeFeatureGrid } from "@/components/dashboard/home-feature-grid";
+import { HomeAnalyticsSection } from "@/components/dashboard/home-analytics-section";
 import { HomeRecentLeads } from "@/components/dashboard/home-recent-leads";
 import { leadDashboardStats } from "@/lib/lead-stats";
 import { getServerT } from "@/lib/i18n/server";
@@ -31,6 +32,8 @@ export default async function DashboardPage() {
       />
 
       <HomeFeatureGrid stats={stats} isAdmin={isAdmin} />
+
+      <HomeAnalyticsSection stats={stats} />
 
       <div className="mt-8">
         <div className="mb-4 flex items-center justify-between">
