@@ -20,12 +20,6 @@ function carLabel(make: string | null, model: string | null, color: string | nul
   return parts || "—";
 }
 
-const CALL_TO_LEAD: Record<string, string> = {
-  call: "CALL",
-  whatsapp: "WHATSAPP",
-  telegram: "TELEGRAM",
-};
-
 export async function leadDashboardStats(userId?: string, role?: string) {
   const where = leadWhere(userId, role);
   const start = todayStart();
@@ -224,24 +218,72 @@ export async function leadDashboardStats(userId?: string, role?: string) {
   for (const row of todayLeadsBySource) {
     todayChannelCounts[row.source] = (todayChannelCounts[row.source] ?? 0) + row._count.id;
   }
-  for (const row of todayCallsByChannel) {
-    const key = CALL_TO_LEAD[row.source] ?? row.source.toUpperCase();
-    if (key in todayChannelCounts) {
-      todayChannelCounts[key] = (todayChannelCounts[key] ?? 0) + row._count.id;
-    }
-  }
 
   const todayByChannel = CHANNEL_SOURCES.map((source) => ({
     source,
     count: todayChannelCounts[source] ?? 0,
   }));
 
-  const todayTotal = todayLeadTalks + todayCallsTotal;
+  const todayTalks = Math.max(todayLeadTalks, todayConversations);
   const topTodayChannel = [...todayByChannel].sort((a, b) => b.count - a.count)[0];
+
+  // So'nggi 7 kun lik trend (lidlar + suhbatlar)
+  const dayKeys: { key: string; label: string; start: Date; end: Date }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - i);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const label = start.toLocaleDateString("uz-UZ", { weekday: "short", day: "numeric" });
+    dayKeys.push({ key: start.toISOString().slice(0, 10), label, start, end });
+  }
+
+  const weekStart = dayKeys[0].start;
+  const [weekLeads, weekConv] = await Promise.all([
+    prisma.lead.findMany({
+      where: { ...where, OR: [{ talkedAt: { gte: weekStart } }, { createdAt: { gte: weekStart } }] },
+      select: { source: true, talkedAt: true, createdAt: true },
+    }),
+    prisma.leadConversation.findMany({
+      where: { talkedAt: { gte: weekStart }, lead: where },
+      select: { talkedAt: true },
+    }),
+  ]);
+
+  const weeklyTrend = dayKeys.map((d) => {
+    const call = weekLeads.filter(
+      (l) =>
+        l.source === "CALL" &&
+        ((l.talkedAt && l.talkedAt >= d.start && l.talkedAt < d.end) ||
+          (!l.talkedAt && l.createdAt >= d.start && l.createdAt < d.end))
+    ).length;
+    const whatsapp = weekLeads.filter(
+      (l) =>
+        l.source === "WHATSAPP" &&
+        ((l.talkedAt && l.talkedAt >= d.start && l.talkedAt < d.end) ||
+          (!l.talkedAt && l.createdAt >= d.start && l.createdAt < d.end))
+    ).length;
+    const telegram = weekLeads.filter(
+      (l) =>
+        l.source === "TELEGRAM" &&
+        ((l.talkedAt && l.talkedAt >= d.start && l.talkedAt < d.end) ||
+          (!l.talkedAt && l.createdAt >= d.start && l.createdAt < d.end))
+    ).length;
+    const talks = weekConv.filter((c) => c.talkedAt >= d.start && c.talkedAt < d.end).length;
+    return {
+      name: d.label,
+      CALL: call,
+      WHATSAPP: whatsapp,
+      TELEGRAM: telegram,
+      talks: talks || call + whatsapp + telegram,
+      total: call + whatsapp + telegram,
+    };
+  });
 
   return {
     total,
-    todayTalks: todayTotal,
+    todayTalks,
     todayLeadTalks,
     todayCallsTotal,
     unassigned: await prisma.lead.count({ where: { ...where, assignedToId: null } }),
@@ -270,6 +312,7 @@ export async function leadDashboardStats(userId?: string, role?: string) {
       .slice(0, 10),
     topCarInterests: mergeCarGroups(leadCarGroups, [], false).slice(0, 10),
     todayCarInterests: mergeCarGroups(todayLeadCarGroups, callCarGroupsToday, true).slice(0, 10),
+    weeklyTrend,
     recentLeads: await prisma.lead.findMany({
       where,
       orderBy: [{ talkedAt: "desc" }, { createdAt: "desc" }],

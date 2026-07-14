@@ -131,8 +131,11 @@ export function DualLine({
             dataKey={k.key}
             name={k.label}
             stroke={k.color}
-            strokeWidth={2}
-            dot={false}
+            strokeWidth={3}
+            dot={{ r: 4, strokeWidth: 2, fill: "#fff" }}
+            activeDot={{ r: 6 }}
+            isAnimationActive
+            animationDuration={900}
           />
         ))}
       </LineChart>
@@ -142,11 +145,14 @@ export function DualLine({
 
 export function DonutChart({
   data,
+  colors,
   height = 280,
 }: {
   data: { name: string; value: number }[];
+  colors?: string[];
   height?: number;
 }) {
+  const palette = colors?.length ? colors : CHART_COLORS;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
@@ -156,14 +162,16 @@ export function DonutChart({
           nameKey="name"
           innerRadius={60}
           outerRadius={95}
-          paddingAngle={2}
+          paddingAngle={3}
+          isAnimationActive
+          animationDuration={900}
+          animationBegin={100}
         >
           {data.map((_, i) => (
-            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+            <Cell key={i} fill={palette[i % palette.length]} />
           ))}
         </Pie>
         <Tooltip contentStyle={tooltipStyle} />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
       </PieChart>
     </ResponsiveContainer>
   );

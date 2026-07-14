@@ -108,6 +108,7 @@ export async function middleware(req: NextRequest) {
   const LEGACY_PATHS = [
     "/inventory", "/incoming", "/customers", "/deals",
     "/contracts", "/finance", "/employees", "/reports",
+    "/calls",
   ];
   if (LEGACY_PATHS.some((p) => pathname.startsWith(p))) {
     const url = req.nextUrl.clone();

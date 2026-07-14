@@ -16,8 +16,8 @@ export type Permission =
 
 const ROLE_PERMISSIONS: Record<Role, Permission[] | "*"> = {
   ADMIN: "*",
-  MANAGER: ["dashboard", "leads", "calls"],
-  ACCOUNTANT: ["dashboard", "leads", "calls"],
+  MANAGER: ["dashboard", "leads"],
+  ACCOUNTANT: ["dashboard", "leads"],
   WAREHOUSE: ["dashboard", "leads"],
 };
 
@@ -30,15 +30,15 @@ export function can(role: Role | string | undefined, permission: Permission): bo
 }
 
 export function permissionsFor(role: Role | string | undefined): Permission[] {
-  const nav: Permission[] = ["dashboard", "leads", "calls", "settings"];
+  const nav: Permission[] = ["dashboard", "leads", "settings"];
   return nav.filter((p) => can(role, p));
 }
 
 export const PATH_PERMISSIONS: { prefix: string; permission: Permission }[] = [
   { prefix: "/leads", permission: "leads" },
-  { prefix: "/calls", permission: "calls" },
   { prefix: "/dashboard", permission: "dashboard" },
   { prefix: "/settings", permission: "settings" },
+  { prefix: "/calls", permission: "leads" },
   { prefix: "/inventory", permission: "leads" },
   { prefix: "/incoming", permission: "leads" },
   { prefix: "/customers", permission: "leads" },
