@@ -1,6 +1,5 @@
 import { getSession } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
-import { HomeFeatureGrid } from "@/components/dashboard/home-feature-grid";
 import { HomeAnalyticsSection } from "@/components/dashboard/home-analytics-section";
 import { HomeRecentLeads } from "@/components/dashboard/home-recent-leads";
 import { leadDashboardStats } from "@/lib/lead-stats";
@@ -15,13 +14,12 @@ export default async function DashboardPage() {
   const stats = await leadDashboardStats(session?.id, session?.role);
 
   const firstName = session?.name.split(" ")[0] ?? "";
-  const isAdmin = session?.role === "ADMIN";
 
   return (
     <div>
       <PageHeader
         title={t("dashboard.greeting", { name: firstName })}
-        description={t("home.subtitle")}
+        description={t("home.analytics.pageSubtitle")}
         action={
           <Link href="/leads?new=1">
             <Button>
@@ -30,8 +28,6 @@ export default async function DashboardPage() {
           </Link>
         }
       />
-
-      <HomeFeatureGrid stats={stats} isAdmin={isAdmin} />
 
       <HomeAnalyticsSection stats={stats} />
 
