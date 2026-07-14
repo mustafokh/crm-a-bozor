@@ -344,15 +344,15 @@ function LeadsPageContent() {
         })}
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-1 rounded-full bg-blue-500" /> Qo&apos;ng&apos;iroq
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs font-medium">
+        <span className="flex items-center gap-1.5 text-blue-700">
+          <span className="inline-block h-4 w-1.5 rounded-full bg-blue-600" /> Qo&apos;ng&apos;iroq
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-1 rounded-full bg-emerald-500" /> WhatsApp
+        <span className="flex items-center gap-1.5 text-emerald-700">
+          <span className="inline-block h-4 w-1.5 rounded-full bg-emerald-600" /> WhatsApp
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-1 rounded-full bg-sky-500" /> Telegram
+        <span className="flex items-center gap-1.5 text-sky-700">
+          <span className="inline-block h-4 w-1.5 rounded-full bg-sky-500" /> Telegram
         </span>
       </div>
 

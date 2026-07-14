@@ -76,7 +76,7 @@ export const LEAD_SOURCE: Record<string, string> = {
 /** Asosiy 3 ta kanal — qo'ng'iroq, WhatsApp, Telegram */
 export const CHANNEL_SOURCES = ["CALL", "WHATSAPP", "TELEGRAM"] as const;
 
-/** Kanal ranglari — qator chap chizig'i, badge, tab */
+/** Kanal ranglari — qator chap chizig'i, badge, tab (yorqin) */
 export const CHANNEL_COLOR: Record<string, {
   line: string;
   badge: string;
@@ -85,25 +85,25 @@ export const CHANNEL_COLOR: Record<string, {
   row: string;
 }> = {
   CALL: {
-    line: "border-l-4 border-l-blue-500",
-    badge: "bg-blue-500/15 text-blue-700 border border-blue-500/30",
-    tab: "border-blue-500/40 text-blue-700 hover:bg-blue-500/10",
-    tabActive: "bg-blue-500 text-white border-blue-500 shadow-sm",
-    row: "bg-blue-500/[0.04]",
+    line: "border-l-[6px] border-l-blue-600",
+    badge: "bg-blue-600 text-white border border-blue-700 shadow-sm",
+    tab: "border-2 border-blue-600 text-blue-700 hover:bg-blue-50",
+    tabActive: "bg-blue-600 text-white border-2 border-blue-700 shadow-md",
+    row: "bg-blue-100/70",
   },
   WHATSAPP: {
-    line: "border-l-4 border-l-emerald-500",
-    badge: "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30",
-    tab: "border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10",
-    tabActive: "bg-emerald-500 text-white border-emerald-500 shadow-sm",
-    row: "bg-emerald-500/[0.04]",
+    line: "border-l-[6px] border-l-emerald-600",
+    badge: "bg-emerald-600 text-white border border-emerald-700 shadow-sm",
+    tab: "border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50",
+    tabActive: "bg-emerald-600 text-white border-2 border-emerald-700 shadow-md",
+    row: "bg-emerald-100/70",
   },
   TELEGRAM: {
-    line: "border-l-4 border-l-sky-500",
-    badge: "bg-sky-500/15 text-sky-700 border border-sky-500/30",
-    tab: "border-sky-500/40 text-sky-700 hover:bg-sky-500/10",
-    tabActive: "bg-sky-500 text-white border-sky-500 shadow-sm",
-    row: "bg-sky-500/[0.04]",
+    line: "border-l-[6px] border-l-sky-500",
+    badge: "bg-sky-500 text-white border border-sky-600 shadow-sm",
+    tab: "border-2 border-sky-500 text-sky-700 hover:bg-sky-50",
+    tabActive: "bg-sky-500 text-white border-2 border-sky-600 shadow-md",
+    row: "bg-sky-100/70",
   },
 };
 
