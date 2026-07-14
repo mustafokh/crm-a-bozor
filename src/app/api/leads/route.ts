@@ -1,3 +1,4 @@
+import { detectCountryFromPhone } from "@/lib/country-display";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, logActivity } from "@/lib/api-auth";
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
     data: {
       fullName: body.fullName,
       phone: body.phone,
-      country: body.country || null,
+      country: body.country || detectCountryFromPhone(String(body.phone)) || null,
       source: body.source || "OTHER",
       status: body.status || "NEW",
       notes: body.notes || null,

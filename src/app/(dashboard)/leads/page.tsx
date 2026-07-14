@@ -20,10 +20,12 @@ import { useToast } from "@/components/ui/toast";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { CarColorBadge } from "@/components/ui/car-color-badge";
 import { CountryBadge } from "@/components/ui/country-badge";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   LEAD_SOURCE, LEAD_OUTCOMES, LEAD_OUTCOME_COLOR, COUNTRY_OPTIONS, CAR_COLOR_OPTIONS,
   CHANNEL_SOURCES, CHANNEL_COLOR,
 } from "@/lib/constants";
+import { detectCountryFromPhone } from "@/lib/country-display";
 import { formatCarShort } from "@/lib/lead-helpers";
 import { formatDateTime, cn } from "@/lib/utils";
 import { validateLead, hasErrors, type Errors } from "@/lib/validation";
@@ -514,17 +516,37 @@ function LeadsPageContent() {
           </div>
           <div>
             <Label>{t("col.phone")}</Label>
-            <Input value={clientForm.phone} onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })} />
+            <PhoneInput
+              value={clientForm.phone}
+              onChange={(phone) => {
+                const detected = detectCountryFromPhone(phone);
+                setClientForm({
+                  ...clientForm,
+                  phone,
+                  country: detected || clientForm.country,
+                });
+                if (errors.phone) setErrors({ ...errors, phone: "" });
+              }}
+              placeholder="+998 90… / +971 50…"
+              className={errors.phone ? "border-destructive" : undefined}
+            />
             <ErrText msg={errors.phone} />
           </div>
           <div>
             <Label>{t("leads.col.country")}</Label>
-            <Select value={clientForm.country} onChange={(e) => setClientForm({ ...clientForm, country: e.target.value })}>
-              <option value="">{t("common.select")}</option>
-              {COUNTRY_OPTIONS.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select
+                value={clientForm.country}
+                onChange={(e) => setClientForm({ ...clientForm, country: e.target.value })}
+                className="flex-1"
+              >
+                <option value="">{t("common.select")}</option>
+                {COUNTRY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </Select>
+              <CountryBadge country={clientForm.country} phone={clientForm.phone} />
+            </div>
           </div>
           <div>
             <Label>{t("leads.col.employee")}</Label>

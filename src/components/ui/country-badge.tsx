@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { resolveCountry } from "@/lib/country-display";
 
-/** Bayroq (rasm) + davlat nomi — emoji o‘rniga flagcdn (hamma joyda ko‘rinadi) */
+/** Lokal bayroq rasm + davlat nomi */
 export function CountryBadge({
   country,
   phone,
@@ -16,27 +17,30 @@ export function CountryBadge({
   showDial?: boolean;
 }) {
   const info = resolveCountry({ country, phone });
+  const [imgFailed, setImgFailed] = useState(false);
   if (!info) return <span className="text-muted-foreground">—</span>;
 
   const iso = info.iso?.toLowerCase();
+  const showImg = Boolean(iso) && !imgFailed;
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card px-2.5 py-1 text-xs font-semibold shadow-sm",
+        "inline-flex items-center gap-2 rounded-full border-2 border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-950 shadow-sm",
         className
       )}
       title={info.dial || info.name}
     >
-      {iso ? (
+      {showImg ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`https://flagcdn.com/w40/${iso}.png`}
+          src={`/flags/${iso}.png`}
           alt=""
-          width={20}
-          height={14}
-          className="h-3.5 w-5 shrink-0 rounded-[2px] object-cover shadow-sm ring-1 ring-black/10"
+          width={22}
+          height={16}
+          className="h-4 w-[22px] shrink-0 rounded-[3px] object-cover shadow ring-1 ring-black/15"
           loading="lazy"
+          onError={() => setImgFailed(true)}
         />
       ) : (
         <span className="text-base leading-none" aria-hidden>
@@ -45,7 +49,7 @@ export function CountryBadge({
       )}
       <span>{info.name}</span>
       {showDial && info.dial && (
-        <span className="font-normal text-muted-foreground">{info.dial}</span>
+        <span className="font-normal text-sky-700/80">{info.dial}</span>
       )}
     </span>
   );

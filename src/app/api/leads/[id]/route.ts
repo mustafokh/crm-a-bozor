@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, logActivity } from "@/lib/api-auth";
 import { LEAD_STATUS } from "@/lib/constants";
+import { detectCountryFromPhone } from "@/lib/country-display";
 import { extractTalkFields } from "@/lib/lead-helpers";
 
 const leadInclude = {
@@ -44,7 +45,11 @@ export async function PATCH(
   const data: Record<string, unknown> = {};
   if (body.fullName !== undefined) data.fullName = body.fullName;
   if (body.phone !== undefined) data.phone = body.phone;
-  if (body.country !== undefined) data.country = body.country || null;
+  if (body.country !== undefined) {
+    data.country = body.country || null;
+  } else if (body.phone !== undefined) {
+    data.country = detectCountryFromPhone(String(body.phone)) || existing.country;
+  }
   if (body.source !== undefined) data.source = body.source;
   if (body.status !== undefined) data.status = body.status;
   if (body.notes !== undefined) data.notes = body.notes;

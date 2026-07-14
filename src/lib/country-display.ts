@@ -70,26 +70,46 @@ export function resolveCountry(opts: {
   country?: string | null;
   phone?: string | null;
 }): CountryInfo | null {
-  const phone = opts.phone?.trim();
-  if (phone) {
-    const parsed = parsePhoneNumberFromString(
-      phone.startsWith("+") ? phone : phone.replace(/^998/, "+998")
-    );
-    if (parsed?.country) return countryFromIso(parsed.country);
-    // Prefix fallback
-    const digits = phone.replace(/\D/g, "");
-    if (digits.startsWith("998") || phone.startsWith("+998")) return countryFromIso("UZ");
-    if (digits.startsWith("971") || phone.startsWith("+971")) return countryFromIso("AE");
-    if (digits.startsWith("7") || phone.startsWith("+7")) return countryFromIso("RU");
-    if (digits.startsWith("90") || phone.startsWith("+90")) return countryFromIso("TR");
-    if (digits.startsWith("1") || phone.startsWith("+1")) return countryFromIso("US");
-  }
+  try {
+    const phone = opts.phone?.trim();
+    if (phone) {
+      // Avvalo prefix — tez va ishonchli (bo‘shliqli raqamlar uchun)
+      const digits = phone.replace(/\D/g, "");
+      if (digits.startsWith("998") || phone.includes("+998")) return countryFromIso("UZ");
+      if (digits.startsWith("971") || phone.includes("+971")) return countryFromIso("AE");
+      if (digits.startsWith("992") || phone.includes("+992")) return countryFromIso("TJ");
+      if (digits.startsWith("996") || phone.includes("+996")) return countryFromIso("KG");
+      if (digits.startsWith("993") || phone.includes("+993")) return countryFromIso("TM");
+      if (digits.startsWith("994") || phone.includes("+994")) return countryFromIso("AZ");
+      if (digits.startsWith("90") || phone.includes("+90")) return countryFromIso("TR");
+      if (digits.startsWith("966") || phone.includes("+966")) return countryFromIso("SA");
+      if (digits.startsWith("974") || phone.includes("+974")) return countryFromIso("QA");
+      if (digits.startsWith("965") || phone.includes("+965")) return countryFromIso("KW");
+      if (digits.startsWith("86") || phone.includes("+86")) return countryFromIso("CN");
+      if (digits.startsWith("82") || phone.includes("+82")) return countryFromIso("KR");
+      if (digits.startsWith("49") || phone.includes("+49")) return countryFromIso("DE");
+      if (digits.startsWith("44") || phone.includes("+44")) return countryFromIso("GB");
+      if (digits.startsWith("1") || phone.includes("+1")) return countryFromIso("US");
 
-  const name = opts.country?.trim();
-  if (!name) return null;
-  const iso = NAME_TO_ISO[name.toLowerCase()];
-  if (iso) return countryFromIso(iso);
-  return { iso: "", name, flag: "🏳️", dial: "" };
+      const parsed = parsePhoneNumberFromString(
+        phone.startsWith("+") ? phone : `+${digits}`
+      );
+      if (parsed?.country) return countryFromIso(parsed.country);
+
+      // +7 — RU/KZ (default RU)
+      if (digits.startsWith("7") || phone.includes("+7")) return countryFromIso("RU");
+    }
+
+    const name = opts.country?.trim();
+    if (!name) return null;
+    const iso = NAME_TO_ISO[name.toLowerCase()];
+    if (iso) return countryFromIso(iso);
+    return { iso: "", name, flag: "🏳️", dial: "" };
+  } catch {
+    const name = opts.country?.trim();
+    if (name) return { iso: "", name, flag: "🏳️", dial: "" };
+    return null;
+  }
 }
 
 /** Telefon raqamidan davlat nomini aniqlaydi (eski API). */

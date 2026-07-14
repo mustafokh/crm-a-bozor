@@ -7,9 +7,11 @@ import { PublicShell } from "@/components/public/public-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useI18n } from "@/components/language-provider";
 import { TalkFields, emptyTalkForm } from "@/components/leads/talk-fields";
 import { COUNTRY_OPTIONS } from "@/lib/constants";
+import { detectCountryFromPhone } from "@/lib/country-display";
 
 function ApplyForm() {
   const params = useSearchParams();
@@ -78,12 +80,17 @@ function ApplyForm() {
           </div>
           <div>
             <Label htmlFor="phone">{t("public.apply.phone")} *</Label>
-            <Input
+            <PhoneInput
               id="phone"
-              type="tel"
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="+998 90 123 45 67"
+              onChange={(phone) =>
+                setForm({
+                  ...form,
+                  phone,
+                  country: detectCountryFromPhone(phone) || form.country,
+                })
+              }
+              placeholder="+998 90… / +971 50…"
               className={errors.phone ? "border-destructive" : ""}
             />
             {errors.phone && <p className="mt-1 text-xs text-destructive">{errors.phone}</p>}

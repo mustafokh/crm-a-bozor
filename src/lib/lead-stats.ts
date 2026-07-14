@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { CHANNEL_SOURCES } from "@/lib/constants";
+import { resolveCountry } from "@/lib/country-display";
 
 function leadWhere(userId?: string, role?: string) {
   return role === "MANAGER"
@@ -13,7 +14,7 @@ function todayStart() {
   return d;
 }
 
-function carLabel(make: string | null, model: string | null, _color?: string | null) {
+function carLabel(make: string | null, model: string | null) {
   const parts = [make, model].filter(Boolean).join(" ").trim();
   return parts || "—";
 }
@@ -40,6 +41,7 @@ export async function leadDashboardStats(userId?: string, role?: string) {
     leadCarGroups,
     todayLeadCarGroups,
     callCarGroupsToday,
+    leadsForCountry,
   ] = await Promise.all([
     prisma.lead.count({ where }),
     prisma.lead.count({ where: todayLeadWhere }),
@@ -118,6 +120,10 @@ export async function leadDashboardStats(userId?: string, role?: string) {
         OR: [{ carModel: { not: null } }, { carColor: { not: null } }],
       },
       _count: { id: true },
+    }),
+    prisma.lead.findMany({
+      where,
+      select: { phone: true, country: true },
     }),
   ]);
 
@@ -293,9 +299,27 @@ export async function leadDashboardStats(userId?: string, role?: string) {
         count: e._count.id,
       }))
       .sort((a, b) => b.count - a.count),
-    byCountry: byCountry
-      .map((c) => ({ country: c.country ?? "—", count: c._count.id }))
-      .sort((a, b) => b.count - a.count),
+    byCountry: (() => {
+      // Telefon (+998 → UZ) asosiy manba — country maydoni ko‘pincha bo‘sh
+      const map = new Map<string, { country: string; count: number }>();
+      for (const lead of leadsForCountry) {
+        const info = resolveCountry({ country: lead.country, phone: lead.phone });
+        if (!info) continue;
+        const key = info.iso || info.name;
+        const prev = map.get(key);
+        map.set(key, {
+          country: info.name,
+          count: (prev?.count ?? 0) + 1,
+        });
+      }
+      // Agar telefon orqali topilmasa, eski groupBy dan
+      if (map.size === 0) {
+        return byCountry
+          .map((c) => ({ country: c.country ?? "—", count: c._count.id }))
+          .sort((a, b) => b.count - a.count);
+      }
+      return [...map.values()].sort((a, b) => b.count - a.count);
+    })(),
     byOutcome: byOutcome
       .map((o) => ({ outcome: o.outcome ?? "—", count: o._count.id }))
       .sort((a, b) => b.count - a.count),

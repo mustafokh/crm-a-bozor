@@ -1,3 +1,5 @@
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+
 // Shared, framework-agnostic validators. Used by both client forms and API
 // routes so the rules stay identical on both sides. Each validator returns a
 // map of field -> Uzbek error message (empty map = valid).
@@ -70,10 +72,38 @@ export function validateCar(data: CarInput): Errors {
   return e;
 }
 
-// Uzbek phone: +998 XX XXX XX XX (spaces optional). Returns true if valid.
+const PHONE_HINT = "Masalan: +998 90 123 45 67 yoki +971 50 123 4567";
+
+/** Xalqaro telefon: +971, +998, +7 va boshqalar */
 export function isValidPhone(phone: string): boolean {
-  const digits = phone.replace(/\D/g, "");
-  return /^998\d{9}$/.test(digits) || /^\d{9}$/.test(digits);
+  const raw = phone.trim();
+  if (!raw) return false;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) return false;
+
+  // Lokal Oʻzbekiston: 9 ta raqam (90…)
+  if (/^\d{9}$/.test(digits)) return true;
+
+  const candidates = [
+    raw.startsWith("+") ? raw : `+${digits}`,
+    digits.startsWith("00") ? `+${digits.slice(2)}` : null,
+  ].filter(Boolean) as string[];
+
+  for (const c of candidates) {
+    try {
+      const parsed = parsePhoneNumberFromString(c);
+      if (parsed?.isValid()) return true;
+      // Ba'zi yangi/mobil raqamlar isValid=false, lekin country aniqlangan
+      if (parsed?.country && parsed.nationalNumber.length >= 6) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // E.164 tashqi format: + va 8–15 raqam
+  if (raw.includes("+") && digits.length >= 8 && digits.length <= 15) return true;
+
+  return false;
 }
 
 export function isValidEmail(email: string): boolean {
@@ -95,7 +125,7 @@ export function validateCustomer(data: CustomerInput): Errors {
 
   if (!data.phone || !String(data.phone).trim()) e.phone = "Telefon raqamni kiriting";
   else if (!isValidPhone(String(data.phone)))
-    e.phone = "Telefon formati noto'g'ri (masalan: +998 90 123 45 67)";
+    e.phone = `Telefon formati noto'g'ri (${PHONE_HINT})`;
 
   if (data.email && String(data.email).trim() && !isValidEmail(String(data.email).trim()))
     e.email = "Email formati noto'g'ri";
@@ -121,7 +151,7 @@ export function validateLead(data: LeadInput): Errors {
   if (!data.fullName || !String(data.fullName).trim()) e.fullName = "Ismni kiriting";
   if (!data.phone || !String(data.phone).trim()) e.phone = "Telefon raqamni kiriting";
   else if (!isValidPhone(String(data.phone)))
-    e.phone = "Telefon formati noto'g'ri (masalan: +998 90 123 45 67)";
+    e.phone = `Telefon formati noto'g'ri (${PHONE_HINT})`;
 
   if (data.budget !== null && data.budget !== undefined && data.budget !== "") {
     const b = Number(data.budget);
