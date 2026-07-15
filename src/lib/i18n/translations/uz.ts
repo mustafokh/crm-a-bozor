@@ -474,6 +474,8 @@ export const uz: TranslationDict = {
   "calls.colLeadSource": "Manba",
   "calls.colCountry": "Davlat",
   "calls.colSource": "Turi",
+  "calls.colAudio": "Audio",
+  "calls.listenAudio": "Audio eshitish",
   "calls.detailTitle": "Suhbat tafsilotlari",
   "calls.duration": "Davomiyligi",
   "calls.summary": "Xulosa",

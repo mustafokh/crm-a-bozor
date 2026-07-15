@@ -206,6 +206,7 @@ model Call {
   callDate         DateTime @map("call_date")
   durationSeconds  Int?     @map("duration_seconds")
   fileName         String?  @map("file_name")
+  audioUrl         String?  @map("audio_url") @db.Text
   source           String   @default("call") // call | whatsapp | telegram
   rawTranscript    String   @map("raw_transcript") @db.Text
 

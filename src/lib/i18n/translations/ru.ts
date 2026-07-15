@@ -457,6 +457,8 @@ export const ru: TranslationDict = {
   "calls.colLeadSource": "Источник",
   "calls.colCountry": "Страна",
   "calls.colSource": "Тип",
+  "calls.colAudio": "Аудио",
+  "calls.listenAudio": "Слушать аудио",
   "calls.detailTitle": "Детали разговора",
   "calls.duration": "Длительность",
   "calls.summary": "Краткое содержание",

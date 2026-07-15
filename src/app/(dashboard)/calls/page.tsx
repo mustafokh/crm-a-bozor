@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Phone, Search, MessageSquare } from "lucide-react";
+import { Phone, Search, MessageSquare, Headphones } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { useI18n } from "@/components/language-provider";
 import { Card } from "@/components/ui/card";
@@ -30,6 +30,7 @@ interface CallRecord {
   callDate: string;
   durationSeconds?: number | null;
   fileName?: string | null;
+  audioUrl?: string | null;
   source: string;
   rawTranscript: string;
   employeeName?: string | null;
@@ -197,6 +198,7 @@ export default function CallsPage() {
                 <TH>{t("calls.colLeadSource")}</TH>
                 <TH>{t("calls.colCountry")}</TH>
                 <TH>{t("calls.colSource")}</TH>
+                <TH>{t("calls.colAudio")}</TH>
               </TR>
             </THead>
             <TBody>
@@ -235,6 +237,21 @@ export default function CallsPage() {
                       {CALL_SOURCE_TYPE[c.source] ?? c.source}
                     </Badge>
                   </TD>
+                  <TD onClick={(e) => e.stopPropagation()}>
+                    {c.audioUrl ? (
+                      <a
+                        href={c.audioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/15"
+                      >
+                        <Headphones className="h-3.5 w-3.5" />
+                        {t("calls.listenAudio")}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TD>
                 </TR>
                 );
               })}
@@ -259,6 +276,18 @@ export default function CallsPage() {
               <div><span className="text-muted-foreground">{t("calls.colCountry")}:</span> {active.country ?? "—"}</div>
               <div><span className="text-muted-foreground">{t("calls.colSource")}:</span> {CALL_SOURCE_TYPE[active.source] ?? active.source}</div>
             </div>
+
+            {active.audioUrl && (
+              <a
+                href={active.audioUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/15"
+              >
+                <Headphones className="h-4 w-4" />
+                {t("calls.listenAudio")}
+              </a>
+            )}
 
             {active.summary && (
               <div>

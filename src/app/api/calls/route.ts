@@ -14,6 +14,7 @@ interface CallPayload {
   call_date?: string;
   duration_seconds?: number;
   file_name?: string;
+  audio_url?: string;
   source?: string;
 }
 
@@ -21,11 +22,29 @@ const MAX_BODY_BYTES = 512 * 1024;
 const MAX_TRANSCRIPT_LEN = 100_000;
 const MAX_FILE_NAME_LEN = 255;
 const MAX_PHONE_LEN = 32;
+const MAX_AUDIO_URL_LEN = 2048;
 const VALID_SOURCES = new Set(["call", "whatsapp", "telegram"]);
 
 function parseCallDate(value: string): Date | null {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Ixtiyoriy audio URL — faqat http(s) */
+function parseAudioUrl(raw: unknown): { value: string | null; error?: string } {
+  if (raw == null || raw === "") return { value: null };
+  const url = String(raw).trim();
+  if (!url) return { value: null };
+  if (url.length > MAX_AUDIO_URL_LEN) return { value: null, error: "audio_url juda uzun" };
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { value: null, error: "audio_url http yoki https bo'lishi kerak" };
+    }
+    return { value: parsed.toString() };
+  } catch {
+    return { value: null, error: "audio_url formati noto'g'ri" };
+  }
 }
 
 /** Tashqi tizimdan qo'ng'iroq/WhatsApp transkriptini qabul qilish (X-API-Key). */
@@ -49,6 +68,7 @@ export async function POST(req: Request) {
   const phoneExtracted = extractPhoneFromText(phoneRaw);
   const rawTranscript = String(body.raw_transcript ?? body.transcript ?? "").trim();
   const fileName = body.file_name != null ? String(body.file_name).trim() : null;
+  const audioParsed = parseAudioUrl(body.audio_url);
   const callDateRaw = String(body.call_date ?? "").trim();
   const sourceRaw = String(body.source ?? "call").trim().toLowerCase();
   const durationSeconds =
@@ -64,6 +84,7 @@ export async function POST(req: Request) {
   if (!rawTranscript) fields.raw_transcript = "Transkript talab qilinadi";
   else if (rawTranscript.length > MAX_TRANSCRIPT_LEN) fields.raw_transcript = "Transkript juda uzun";
   if (fileName && fileName.length > MAX_FILE_NAME_LEN) fields.file_name = "Fayl nomi juda uzun";
+  if (audioParsed.error) fields.audio_url = audioParsed.error;
   if (!callDateRaw) fields.call_date = "Qo'ng'iroq sanasi talab qilinadi";
   if (!VALID_SOURCES.has(sourceRaw)) fields.source = "Manba call, whatsapp yoki telegram bo'lishi kerak";
 
@@ -95,6 +116,7 @@ export async function POST(req: Request) {
       callDate: callDate!,
       durationSeconds,
       fileName,
+      audioUrl: audioParsed.value,
       source: sourceRaw,
       rawTranscript,
       employeeName: analysis.employeeName,
@@ -130,6 +152,7 @@ export async function POST(req: Request) {
       id: call.id,
       lead_id: lead.id,
       country: call.country,
+      audio_url: call.audioUrl,
       analysis: {
         employee_name: call.employeeName,
         customer_name: call.customerName,
@@ -150,7 +173,7 @@ export async function POST(req: Request) {
 
 /** Admin panel uchun qo'ng'iroqlar ro'yxati (filtrlash bilan). */
 export async function GET(req: Request) {
-  const auth = await requirePermission("calls");
+  const auth = await requirePermission("leads");
   if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(req.url);

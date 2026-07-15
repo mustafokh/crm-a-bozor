@@ -457,6 +457,8 @@ export const en: TranslationDict = {
   "calls.colLeadSource": "Lead source",
   "calls.colCountry": "Country",
   "calls.colSource": "Type",
+  "calls.colAudio": "Audio",
+  "calls.listenAudio": "Listen audio",
   "calls.detailTitle": "Conversation details",
   "calls.duration": "Duration",
   "calls.summary": "Summary",
