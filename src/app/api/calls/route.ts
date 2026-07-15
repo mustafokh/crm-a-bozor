@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyApiKey } from "@/lib/api-key-auth";
 import { requirePermission } from "@/lib/api-auth";
-import { normalizePhone } from "@/lib/phone";
+import { normalizePhone, extractPhoneFromText } from "@/lib/phone";
 import { detectCountryFromPhone } from "@/lib/calls/phone-country";
 import { analyzeTranscript } from "@/lib/calls/analyze-transcript";
 import { syncCallToLead } from "@/lib/calls/sync-lead";
@@ -46,6 +46,7 @@ export async function POST(req: Request) {
   }
 
   const phoneRaw = String(body.phone ?? "").trim();
+  const phoneExtracted = extractPhoneFromText(phoneRaw);
   const rawTranscript = String(body.raw_transcript ?? body.transcript ?? "").trim();
   const fileName = body.file_name != null ? String(body.file_name).trim() : null;
   const callDateRaw = String(body.call_date ?? "").trim();
@@ -57,7 +58,9 @@ export async function POST(req: Request) {
 
   const fields: Record<string, string> = {};
   if (!phoneRaw) fields.phone = "Telefon talab qilinadi";
-  else if (phoneRaw.length > MAX_PHONE_LEN) fields.phone = "Telefon juda uzun";
+  else if (phoneExtracted.replace(/\D/g, "").length >= 8 && phoneExtracted.length > MAX_PHONE_LEN) {
+    fields.phone = "Telefon juda uzun";
+  }
   if (!rawTranscript) fields.raw_transcript = "Transkript talab qilinadi";
   else if (rawTranscript.length > MAX_TRANSCRIPT_LEN) fields.raw_transcript = "Transkript juda uzun";
   if (fileName && fileName.length > MAX_FILE_NAME_LEN) fields.file_name = "Fayl nomi juda uzun";
@@ -82,7 +85,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status });
   }
 
-  const phone = normalizePhone(phoneRaw);
+  const phone = normalizePhone(phoneExtracted);
   const country = detectCountryFromPhone(phone);
 
   const call = await prisma.call.create({
