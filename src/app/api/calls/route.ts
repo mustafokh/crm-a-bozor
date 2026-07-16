@@ -176,7 +176,22 @@ export async function POST(req: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "syncCallToLead failed";
     console.error("POST /api/calls sync error:", message);
-    return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+    // audio_url ustuni hali production DB’da yo‘qligi sabab sync oxiridagi
+    // prisma.call.update() yiqilib qolishi mumkin.
+    // Lead shu vaqtning o‘zida yaratilgan bo‘ladi, shuning uchun lead’ni phone bo‘yicha topib davom etamiz.
+    if (message.includes("calls.audio_url") && message.includes("does not exist")) {
+      const existingLead = await prisma.lead.findFirst({
+        where: { phone },
+        orderBy: { updatedAt: "desc" },
+      });
+      if (existingLead) {
+        lead = existingLead;
+      } else {
+        return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+      }
+    } else {
+      return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+    }
   }
 
   return NextResponse.json(
