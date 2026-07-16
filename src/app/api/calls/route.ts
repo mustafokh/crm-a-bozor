@@ -159,7 +159,18 @@ export async function POST(req: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "call.create failed";
     console.error("POST /api/calls create error:", message);
-    return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+    // audio_url ustuni hali DB’da yo‘qligi sabab insert qismi yiqilsa, audioUrl’ni tushirib retry qilamiz.
+    if (audioParsed.value && message.includes("calls.audio_url") && message.includes("does not exist")) {
+      const retryData = { ...(callData as any) } as any;
+      delete retryData.audioUrl;
+      const retryCall = await prisma.call.create({
+        data: retryData,
+        select: { id: true },
+      });
+      callId = retryCall.id;
+    } else {
+      return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+    }
   }
 
   let lead: Awaited<ReturnType<typeof syncCallToLead>>;
