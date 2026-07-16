@@ -106,8 +106,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status });
   }
 
-  const phone = normalizePhone(phoneExtracted);
-  const country = detectCountryFromPhone(phone);
+  let phone: string;
+  let country: string | null;
+  try {
+    phone = normalizePhone(phoneExtracted);
+    country = detectCountryFromPhone(phone);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "phone/country detection failed";
+    console.error("POST /api/calls phone detection error:", message);
+    return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+  }
 
   const callData: Parameters<typeof prisma.call.create>[0]["data"] = {
     phone,
