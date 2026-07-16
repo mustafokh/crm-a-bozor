@@ -20,7 +20,8 @@ interface CallPayload {
 
 const MAX_BODY_BYTES = 512 * 1024;
 const MAX_TRANSCRIPT_LEN = 100_000;
-const MAX_FILE_NAME_LEN = 255;
+// audio_url fallback’da file_name ga URL saqlashimiz mumkin.
+const MAX_FILE_NAME_LEN = 2048;
 const MAX_PHONE_LEN = 32;
 const MAX_AUDIO_URL_LEN = 2048;
 const VALID_SOURCES = new Set(["call", "whatsapp", "telegram"]);
@@ -67,8 +68,10 @@ export async function POST(req: Request) {
   const phoneRaw = String(body.phone ?? "").trim();
   const phoneExtracted = extractPhoneFromText(phoneRaw);
   const rawTranscript = String(body.raw_transcript ?? body.transcript ?? "").trim();
-  const fileName = body.file_name != null ? String(body.file_name).trim() : null;
+  let fileName = body.file_name != null ? String(body.file_name).trim() : null;
   const audioParsed = parseAudioUrl(body.audio_url);
+  // DB’da calls.audio_url ustuni yo‘q bo‘lishi mumkin: file_name bo‘sh bo‘lsa audio_url’ni shu yerga vaqtincha saqlaymiz.
+  if (!fileName && audioParsed.value) fileName = audioParsed.value;
   const callDateRaw = String(body.call_date ?? "").trim();
   const sourceRaw = String(body.source ?? "call").trim().toLowerCase();
   const durationSeconds =
@@ -140,12 +143,9 @@ export async function POST(req: Request) {
     followUpNeeded: analysis.followUpNeeded,
     followUpNote: analysis.followUpNote,
   };
-  // audio_url berilmagan bo'lsa ustunni insert va RETURNING qilmaslik uchun tashlab ketamiz.
-  if (audioParsed.value) {
-    // prisma schema'ga audioUrl qo'shilgan, ammo production DBda hali bo'lmasa 500 chiqishi mumkin.
-    // Shuning uchun minimal select bilan ishlaymiz (pastda).
-    (callData as any).audioUrl = audioParsed.value;
-  }
+  // audio_url’ni to‘g‘ridan-to‘g‘ri calls.audio_url ustuniga yozmaymiz.
+  // Production DB’da ustun bo‘lmasligi mumkin, shunda 500 chiqadi.
+  // Admin panel esa fileName ichidagi URL bo‘yicha audio_url’ni topib beradi.
 
   // Minimal select: agar production’da yangi audio_url ustuni hali qo‘shilmagan bo‘lsa
   // SELECT/RETURNING audio_url sabab 500 bermasligi uchun faqat id ni qaytaramiz.

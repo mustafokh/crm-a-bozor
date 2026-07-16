@@ -57,6 +57,12 @@ function formatDuration(sec?: number | null) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function resolveAudioUrl(c: CallRecord): string | null {
+  if (c.audioUrl) return c.audioUrl;
+  if (c.fileName && /^https?:\/\//i.test(c.fileName)) return c.fileName;
+  return null;
+}
+
 export default function CallsPage() {
   const { t } = useI18n();
   const [calls, setCalls] = useState<CallRecord[]>([]);
@@ -205,6 +211,7 @@ export default function CallsPage() {
               {calls.map((c) => {
                 const channelKey = c.source === "whatsapp" ? "WHATSAPP" : c.source === "telegram" ? "TELEGRAM" : "CALL";
                 const ch = CHANNEL_COLOR[channelKey];
+                const audio = resolveAudioUrl(c);
                 return (
                 <TR
                   key={c.id}
@@ -238,9 +245,9 @@ export default function CallsPage() {
                     </Badge>
                   </TD>
                   <TD onClick={(e) => e.stopPropagation()}>
-                    {c.audioUrl ? (
+                    {audio ? (
                       <a
-                        href={c.audioUrl}
+                        href={audio}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/15"
@@ -277,9 +284,9 @@ export default function CallsPage() {
               <div><span className="text-muted-foreground">{t("calls.colSource")}:</span> {CALL_SOURCE_TYPE[active.source] ?? active.source}</div>
             </div>
 
-            {active.audioUrl && (
+            {resolveAudioUrl(active) && (
               <a
-                href={active.audioUrl}
+                href={resolveAudioUrl(active) as string}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/15"
