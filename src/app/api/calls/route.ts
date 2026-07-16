@@ -109,31 +109,41 @@ export async function POST(req: Request) {
   const phone = normalizePhone(phoneExtracted);
   const country = detectCountryFromPhone(phone);
 
+  const callData: Parameters<typeof prisma.call.create>[0]["data"] = {
+    phone,
+    country,
+    callDate: callDate!,
+    durationSeconds,
+    fileName,
+    source: sourceRaw,
+    rawTranscript,
+    employeeName: analysis.employeeName,
+    customerName: analysis.customerName,
+    customerIntent: analysis.customerIntent,
+    carModel: analysis.carModel,
+    carColor: analysis.carColor,
+    carBrand: analysis.carBrand,
+    outcome: analysis.outcome,
+    reasonPurchased: analysis.reasonPurchased,
+    reasonNotPurchased: analysis.reasonNotPurchased,
+    leadSource: analysis.leadSource,
+    summary: analysis.summary,
+    sentiment: analysis.sentiment,
+    followUpNeeded: analysis.followUpNeeded,
+    followUpNote: analysis.followUpNote,
+  };
+  // audio_url berilmagan bo'lsa ustunni insert va RETURNING qilmaslik uchun tashlab ketamiz.
+  if (audioParsed.value) {
+    // prisma schema'ga audioUrl qo'shilgan, ammo production DBda hali bo'lmasa 500 chiqishi mumkin.
+    // Shuning uchun minimal select bilan ishlaymiz (pastda).
+    (callData as any).audioUrl = audioParsed.value;
+  }
+
+  // Minimal select: agar production’da yangi audio_url ustuni hali qo‘shilmagan bo‘lsa
+  // SELECT/RETURNING audio_url sabab 500 bermasligi uchun faqat id ni qaytaramiz.
   const call = await prisma.call.create({
-    data: {
-      phone,
-      country,
-      callDate: callDate!,
-      durationSeconds,
-      fileName,
-      audioUrl: audioParsed.value,
-      source: sourceRaw,
-      rawTranscript,
-      employeeName: analysis.employeeName,
-      customerName: analysis.customerName,
-      customerIntent: analysis.customerIntent,
-      carModel: analysis.carModel,
-      carColor: analysis.carColor,
-      carBrand: analysis.carBrand,
-      outcome: analysis.outcome,
-      reasonPurchased: analysis.reasonPurchased,
-      reasonNotPurchased: analysis.reasonNotPurchased,
-      leadSource: analysis.leadSource,
-      summary: analysis.summary,
-      sentiment: analysis.sentiment,
-      followUpNeeded: analysis.followUpNeeded,
-      followUpNote: analysis.followUpNote,
-    },
+    data: callData,
+    select: { id: true },
   });
 
   const lead = await syncCallToLead({
@@ -151,20 +161,21 @@ export async function POST(req: Request) {
       ok: true,
       id: call.id,
       lead_id: lead.id,
-      country: call.country,
-      audio_url: call.audioUrl,
+      country,
+      audio_url: audioParsed.value,
       analysis: {
-        employee_name: call.employeeName,
-        customer_name: call.customerName,
-        customer_intent: call.customerIntent,
-        car_model: call.carModel,
-        car_color: call.carColor,
-        car_brand: call.carBrand,
-        outcome: call.outcome,
-        lead_source: call.leadSource,
-        summary: call.summary,
-        sentiment: call.sentiment,
-        follow_up_needed: call.followUpNeeded,
+        employee_name: analysis.employeeName,
+        customer_name: analysis.customerName,
+        customer_intent: analysis.customerIntent,
+        car_model: analysis.carModel,
+        car_color: analysis.carColor,
+        car_brand: analysis.carBrand,
+        outcome: analysis.outcome,
+        lead_source: analysis.leadSource,
+        summary: analysis.summary,
+        sentiment: analysis.sentiment,
+        follow_up_needed: analysis.followUpNeeded,
+        follow_up_note: analysis.followUpNote,
       },
     },
     { status: 201 }
@@ -220,11 +231,48 @@ export async function GET(req: Request) {
     ];
   }
 
-  const calls = await prisma.call.findMany({
-    where,
-    orderBy: { callDate: "desc" },
-    take: 500,
-  });
+  // DB schema'da audio_url ustuni hali qo'shilmagan bo'lishi mumkin.
+  // Unda GET ham 500 bermasligi uchun audioUrl ni talab qilmaydigan fallback select qilamiz.
+  let calls: any[];
+  try {
+    calls = await prisma.call.findMany({
+      where,
+      orderBy: { callDate: "desc" },
+      take: 500,
+    });
+  } catch {
+    calls = await prisma.call.findMany({
+      where,
+      orderBy: { callDate: "desc" },
+      take: 500,
+      select: {
+        id: true,
+        phone: true,
+        country: true,
+        callDate: true,
+        durationSeconds: true,
+        fileName: true,
+        source: true,
+        rawTranscript: true,
+        employeeName: true,
+        customerName: true,
+        customerIntent: true,
+        carModel: true,
+        carColor: true,
+        carBrand: true,
+        outcome: true,
+        reasonPurchased: true,
+        reasonNotPurchased: true,
+        leadSource: true,
+        summary: true,
+        sentiment: true,
+        followUpNeeded: true,
+        followUpNote: true,
+        leadId: true,
+        createdAt: true,
+      },
+    });
+  }
 
   const employees = await prisma.call.findMany({
     where: { employeeName: { not: null } },
