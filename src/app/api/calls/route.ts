@@ -141,25 +141,40 @@ export async function POST(req: Request) {
 
   // Minimal select: agar production’da yangi audio_url ustuni hali qo‘shilmagan bo‘lsa
   // SELECT/RETURNING audio_url sabab 500 bermasligi uchun faqat id ni qaytaramiz.
-  const call = await prisma.call.create({
-    data: callData,
-    select: { id: true },
-  });
+  let callId: string;
+  try {
+    const call = await prisma.call.create({
+      data: callData,
+      select: { id: true },
+    });
+    callId = call.id;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "call.create failed";
+    console.error("POST /api/calls create error:", message);
+    return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+  }
 
-  const lead = await syncCallToLead({
-    phone,
-    country,
-    callDate: callDate!,
-    channelSource: sourceRaw,
-    analysis,
-    rawTranscript,
-    callId: call.id,
-  });
+  let lead: Awaited<ReturnType<typeof syncCallToLead>>;
+  try {
+    lead = await syncCallToLead({
+      phone,
+      country,
+      callDate: callDate!,
+      channelSource: sourceRaw,
+      analysis,
+      rawTranscript,
+      callId,
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "syncCallToLead failed";
+    console.error("POST /api/calls sync error:", message);
+    return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+  }
 
   return NextResponse.json(
     {
       ok: true,
-      id: call.id,
+      id: callId,
       lead_id: lead.id,
       country,
       audio_url: audioParsed.value,
@@ -240,7 +255,7 @@ export async function GET(req: Request) {
       orderBy: { callDate: "desc" },
       take: 500,
     });
-  } catch {
+  } catch (e) {
     calls = await prisma.call.findMany({
       where,
       orderBy: { callDate: "desc" },
@@ -274,12 +289,19 @@ export async function GET(req: Request) {
     });
   }
 
-  const employees = await prisma.call.findMany({
-    where: { employeeName: { not: null } },
-    select: { employeeName: true },
-    distinct: ["employeeName"],
-    orderBy: { employeeName: "asc" },
-  });
+  let employees: { employeeName: string | null }[];
+  try {
+    employees = await prisma.call.findMany({
+      where: { employeeName: { not: null } },
+      select: { employeeName: true },
+      distinct: ["employeeName"],
+      orderBy: { employeeName: "asc" },
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "employees query failed";
+    console.error("GET /api/calls employees error:", message);
+    return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+  }
 
   return NextResponse.json({
     calls,
