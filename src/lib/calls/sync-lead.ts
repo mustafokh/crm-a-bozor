@@ -103,9 +103,12 @@ export async function syncCallToLead(params: {
     });
   }
 
+  // audio_url ustuni hali production DB’da qo‘shilmagan bo‘lsa ham ishlashi uchun
+  // faqat id ni qaytarib, audioUrl ustunini SELECT/RETURNING qilmaslik kerak.
   await prisma.call.update({
     where: { id: params.callId },
     data: { leadId: lead.id },
+    select: { id: true },
   });
 
   return lead;
