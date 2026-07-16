@@ -159,8 +159,10 @@ export async function POST(req: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "call.create failed";
     console.error("POST /api/calls create error:", message);
-    // audio_url ustuni hali DB’da yo‘qligi sabab insert qismi yiqilsa, audioUrl’ni tushirib retry qilamiz.
-    if (audioParsed.value && message.includes("calls.audio_url") && message.includes("does not exist")) {
+    // audio_url ustuni hali DB’da yo‘qligi sabab insert qismi yiqilsa,
+    // audioUrl’ni tushirib retry qilamiz. Prisma xabarida `audio_url` yoki `calls.audio_url` bo‘lishi mumkin.
+    const m = message.toLowerCase();
+    if (audioParsed.value && m.includes("audio_url") && m.includes("does not exist")) {
       const retryData = { ...(callData as any) } as any;
       delete retryData.audioUrl;
       const retryCall = await prisma.call.create({
