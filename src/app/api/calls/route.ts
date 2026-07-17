@@ -6,6 +6,7 @@ import { normalizePhone, extractPhoneFromText } from "@/lib/phone";
 import { detectCountryFromPhone } from "@/lib/calls/phone-country";
 import { analyzeTranscript } from "@/lib/calls/analyze-transcript";
 import { syncCallToLead } from "@/lib/calls/sync-lead";
+import { resolveCallDirection } from "@/lib/calls/call-direction";
 import {
   appendTranscriptLine,
   labelMessage,
@@ -22,7 +23,7 @@ interface CallPayload {
   file_name?: string;
   audio_url?: string;
   source?: string;
-  /** WhatsApp/Telegram: inbound (mijoz) | outbound (xodim) */
+  /** incoming | outgoing (yoki inbound/outbound) */
   direction?: string;
   from_me?: boolean | string | number;
 }
@@ -32,7 +33,6 @@ const THREAD_SOURCES = new Set(["whatsapp", "telegram"]);
 
 const MAX_BODY_BYTES = 512 * 1024;
 const MAX_TRANSCRIPT_LEN = 100_000;
-// audio_url fallback’da file_name ga URL saqlashimiz mumkin.
 const MAX_FILE_NAME_LEN = 2048;
 const MAX_PHONE_LEN = 32;
 const MAX_AUDIO_URL_LEN = 2048;
@@ -60,6 +60,11 @@ function parseAudioUrl(raw: unknown): { value: string | null; error?: string } {
   }
 }
 
+function isMissingColumnError(message: string, column: string): boolean {
+  const m = message.toLowerCase();
+  return m.includes(column.toLowerCase()) && (m.includes("does not exist") || m.includes("unknown column"));
+}
+
 /** Tashqi tizimdan qo'ng'iroq/WhatsApp transkriptini qabul qilish (X-API-Key). */
 export async function POST(req: Request) {
   const authError = verifyApiKey(req);
@@ -80,16 +85,21 @@ export async function POST(req: Request) {
   const phoneRaw = String(body.phone ?? "").trim();
   const phoneExtracted = extractPhoneFromText(phoneRaw);
   const rawTranscript = String(body.raw_transcript ?? body.transcript ?? "").trim();
-  let fileName = body.file_name != null ? String(body.file_name).trim() : null;
+  const fileName = body.file_name != null ? String(body.file_name).trim() || null : null;
   const audioParsed = parseAudioUrl(body.audio_url);
-  // DB’da calls.audio_url ustuni yo‘q bo‘lishi mumkin: file_name bo‘sh bo‘lsa audio_url’ni shu yerga vaqtincha saqlaymiz.
-  if (!fileName && audioParsed.value) fileName = audioParsed.value;
   const callDateRaw = String(body.call_date ?? "").trim();
   const sourceRaw = String(body.source ?? "call").trim().toLowerCase();
   const durationSeconds =
     body.duration_seconds != null && Number.isFinite(Number(body.duration_seconds))
       ? Math.max(0, Math.floor(Number(body.duration_seconds)))
       : null;
+
+  const callDirection = resolveCallDirection({
+    direction: body.direction,
+    from_me: body.from_me,
+    fileName,
+    source: sourceRaw,
+  });
 
   const fields: Record<string, string> = {};
   if (!phoneRaw) fields.phone = "Telefon talab qilinadi";
@@ -123,7 +133,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
   }
 
-  // WhatsApp/Telegram: xabar ID bo'yicha takroriy POST'ni o'tkazib yuborish
   if (THREAD_SOURCES.has(sourceRaw) && fileName) {
     const duplicate = await prisma.call.findFirst({
       where: { fileName, source: sourceRaw },
@@ -143,8 +152,8 @@ export async function POST(req: Request) {
   let refreshConversation = false;
 
   if (THREAD_SOURCES.has(sourceRaw)) {
-    const direction = resolveMessageDirection(body);
-    const labeledLine = labelMessage(rawTranscript, direction);
+    const msgDir = resolveMessageDirection(body);
+    const labeledLine = labelMessage(rawTranscript, msgDir);
 
     const threads = await prisma.call.findMany({
       where: { phone, source: sourceRaw },
@@ -155,7 +164,6 @@ export async function POST(req: Request) {
     if (threads.length > 0) {
       const mergedHistory = mergeThreadTranscripts(threads.map((t) => t.rawTranscript));
       transcriptForAnalysis = appendTranscriptLine(mergedHistory, labeledLine);
-      // Eng yangisini asosiy yozuv sifatida saqlaymiz
       existingThreadId = threads[threads.length - 1]!.id;
       siblingIds = threads.slice(0, -1).map((t) => t.id);
       refreshConversation = true;
@@ -164,7 +172,6 @@ export async function POST(req: Request) {
     }
 
     if (transcriptForAnalysis.length > MAX_TRANSCRIPT_LEN) {
-      // Eng yangi qismni saqlab, eski qatorlarni qisqartiramiz
       let clipped = transcriptForAnalysis.slice(-MAX_TRANSCRIPT_LEN);
       const nl = clipped.indexOf("\n");
       if (nl > 0 && nl < 400) clipped = clipped.slice(nl + 1);
@@ -188,6 +195,7 @@ export async function POST(req: Request) {
     carModel: analysis.carModel,
     carColor: analysis.carColor,
     carBrand: analysis.carBrand,
+    carTransmission: analysis.carTransmission,
     outcome: analysis.outcome,
     reasonPurchased: analysis.reasonPurchased,
     reasonNotPurchased: analysis.reasonNotPurchased,
@@ -204,16 +212,13 @@ export async function POST(req: Request) {
     callDate: callDate!,
     durationSeconds,
     fileName,
+    audioUrl: audioParsed.value,
     source: sourceRaw,
+    direction: callDirection,
     rawTranscript: transcriptForAnalysis,
     ...analysisFields,
   };
-  // audio_url’ni to‘g‘ridan-to‘g‘ri calls.audio_url ustuniga yozmaymiz.
-  // Production DB’da ustun bo‘lmasligi mumkin, shunda 500 chiqadi.
-  // Admin panel esa fileName ichidagi URL bo‘yicha audio_url’ni topib beradi.
 
-  // Minimal select: agar production’da yangi audio_url ustuni hali qo‘shilmagan bo‘lsa
-  // SELECT/RETURNING audio_url sabab 500 bermasligi uchun faqat id ni qaytaramiz.
   let callId: string;
   let createdNew = false;
 
@@ -226,13 +231,14 @@ export async function POST(req: Request) {
           callDate: callDate!,
           durationSeconds,
           fileName,
+          ...(audioParsed.value ? { audioUrl: audioParsed.value } : {}),
+          ...(callDirection ? { direction: callDirection } : {}),
           rawTranscript: transcriptForAnalysis,
           ...analysisFields,
         },
         select: { id: true },
       });
       callId = existingThreadId;
-
       if (siblingIds.length > 0) {
         await prisma.call.deleteMany({ where: { id: { in: siblingIds } } });
       }
@@ -247,20 +253,48 @@ export async function POST(req: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "call.create failed";
     console.error("POST /api/calls create/update error:", message);
-    // audio_url ustuni hali DB’da yo‘qligi sabab insert qismi yiqilsa,
-    // audioUrl’ni tushirib retry qilamiz. Prisma xabarida `audio_url` yoki `calls.audio_url` bo‘lishi mumkin.
-    const m = message.toLowerCase();
-    if (!existingThreadId && audioParsed.value && m.includes("audio_url") && m.includes("does not exist")) {
-      const retryData = { ...(callData as any) } as any;
+
+    const retryData: Record<string, unknown> = { ...callData };
+    if (isMissingColumnError(message, "audio_url") || isMissingColumnError(message, "audioUrl")) {
       delete retryData.audioUrl;
-      const retryCall = await prisma.call.create({
-        data: retryData,
-        select: { id: true },
-      });
-      callId = retryCall.id;
-      createdNew = true;
-    } else {
-      return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
+    }
+    if (isMissingColumnError(message, "car_transmission") || isMissingColumnError(message, "carTransmission")) {
+      delete retryData.carTransmission;
+    }
+    if (isMissingColumnError(message, "direction")) {
+      delete retryData.direction;
+    }
+
+    try {
+      if (existingThreadId) {
+        const updateRetry: Record<string, unknown> = {
+          country,
+          callDate: callDate!,
+          durationSeconds,
+          fileName,
+          rawTranscript: transcriptForAnalysis,
+          ...analysisFields,
+        };
+        if (retryData.audioUrl !== undefined) updateRetry.audioUrl = retryData.audioUrl;
+        if (retryData.direction !== undefined) updateRetry.direction = retryData.direction;
+        if (retryData.carTransmission === undefined) delete updateRetry.carTransmission;
+        await prisma.call.update({
+          where: { id: existingThreadId },
+          data: updateRetry as any,
+          select: { id: true },
+        });
+        callId = existingThreadId;
+      } else {
+        const retryCall = await prisma.call.create({
+          data: retryData as typeof callData,
+          select: { id: true },
+        });
+        callId = retryCall.id;
+        createdNew = true;
+      }
+    } catch (e2) {
+      const message2 = e2 instanceof Error ? e2.message : "call persist retry failed";
+      return NextResponse.json({ error: "Server xatosi", detail: message2 }, { status: 500 });
     }
   }
 
@@ -279,10 +313,7 @@ export async function POST(req: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "syncCallToLead failed";
     console.error("POST /api/calls sync error:", message);
-    // audio_url ustuni hali production DB’da yo‘qligi sabab sync oxiridagi
-    // prisma.call.update() yiqilib qolishi mumkin.
-    // Lead shu vaqtning o‘zida yaratilgan bo‘ladi, shuning uchun lead’ni phone bo‘yicha topib davom etamiz.
-    if (message.includes("calls.audio_url") && message.includes("does not exist")) {
+    if (isMissingColumnError(message, "audio_url") || message.includes("calls.audio_url")) {
       const existingLead = await prisma.lead.findFirst({
         where: { phone },
         orderBy: { updatedAt: "desc" },
@@ -304,6 +335,7 @@ export async function POST(req: Request) {
       lead_id: lead.id,
       country,
       audio_url: audioParsed.value,
+      direction: callDirection,
       thread_updated: !createdNew,
       analysis: {
         employee_name: analysis.employeeName,
@@ -312,6 +344,7 @@ export async function POST(req: Request) {
         car_model: analysis.carModel,
         car_color: analysis.carColor,
         car_brand: analysis.carBrand,
+        car_transmission: analysis.carTransmission,
         budget: analysis.budget,
         outcome: analysis.outcome,
         lead_source: analysis.leadSource,
@@ -336,6 +369,7 @@ export async function GET(req: Request) {
   const leadSource = searchParams.get("lead_source")?.trim();
   const country = searchParams.get("country")?.trim();
   const source = searchParams.get("source")?.trim();
+  const direction = searchParams.get("direction")?.trim();
   const dateFrom = searchParams.get("date_from")?.trim();
   const dateTo = searchParams.get("date_to")?.trim();
   const search = searchParams.get("search")?.trim();
@@ -347,6 +381,7 @@ export async function GET(req: Request) {
   if (leadSource) where.leadSource = leadSource;
   if (country) where.country = country;
   if (source && VALID_SOURCES.has(source)) where.source = source;
+  if (direction === "incoming" || direction === "outgoing") where.direction = direction;
 
   if (dateFrom || dateTo) {
     const callDate: Record<string, Date> = {};
@@ -374,8 +409,6 @@ export async function GET(req: Request) {
     ];
   }
 
-  // DB schema'da audio_url ustuni hali qo'shilmagan bo'lishi mumkin.
-  // Unda GET ham 500 bermasligi uchun audioUrl ni talab qilmaydigan fallback select qilamiz.
   let calls: any[];
   try {
     calls = await prisma.call.findMany({
@@ -384,6 +417,8 @@ export async function GET(req: Request) {
       take: 500,
     });
   } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("GET /api/calls fallback select:", message);
     calls = await prisma.call.findMany({
       where,
       orderBy: { callDate: "desc" },

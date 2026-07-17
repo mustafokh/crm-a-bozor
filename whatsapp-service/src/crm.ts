@@ -16,7 +16,7 @@ export async function forwardToCrm(msg: IncomingWhatsAppMessage): Promise<void> 
     raw_transcript: msg.text,
     call_date: (msg.timestamp ?? new Date()).toISOString(),
     source: "whatsapp",
-    direction: msg.fromMe ? "outbound" : "inbound",
+    direction: msg.fromMe ? "outgoing" : "incoming",
     from_me: Boolean(msg.fromMe),
     file_name: msg.messageId ? `wa:${msg.messageId}` : undefined,
   };

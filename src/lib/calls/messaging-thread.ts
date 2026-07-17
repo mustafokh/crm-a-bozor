@@ -7,10 +7,22 @@ export function resolveMessageDirection(body: {
   from_me?: unknown;
 }): MessageDirection {
   const direction = String(body.direction ?? "").trim().toLowerCase();
-  if (direction === "outbound" || direction === "out" || direction === "employee") {
+  if (
+    direction === "outbound" ||
+    direction === "outgoing" ||
+    direction === "out" ||
+    direction === "employee" ||
+    direction === "chiquvchi"
+  ) {
     return "outbound";
   }
-  if (direction === "inbound" || direction === "in" || direction === "customer") {
+  if (
+    direction === "inbound" ||
+    direction === "incoming" ||
+    direction === "in" ||
+    direction === "customer" ||
+    direction === "kiruvchi"
+  ) {
     return "inbound";
   }
   if (body.from_me === true || body.from_me === "true" || body.from_me === 1) {

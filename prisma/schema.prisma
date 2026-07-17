@@ -208,6 +208,8 @@ model Call {
   fileName         String?  @map("file_name")
   audioUrl         String?  @map("audio_url") @db.Text
   source           String   @default("call") // call | whatsapp | telegram
+  /** incoming = mijoz bizga, outgoing = xodim mijozga */
+  direction        String?  // incoming | outgoing
   rawTranscript    String   @map("raw_transcript") @db.Text
 
   // AI tahlili natijalari
@@ -217,6 +219,8 @@ model Call {
   carModel           String?  @map("car_model")
   carColor           String?  @map("car_color")
   carBrand           String?  @map("car_brand")
+  /** mexanika | avtomat */
+  carTransmission    String?  @map("car_transmission")
   outcome            String?
   reasonPurchased    String?  @map("reason_purchased") @db.Text
   reasonNotPurchased String?  @map("reason_not_purchased") @db.Text
@@ -238,6 +242,7 @@ model Call {
   @@index([leadSource])
   @@index([country])
   @@index([source])
+  @@index([direction])
   @@index([leadId])
   @@map("calls")
 }

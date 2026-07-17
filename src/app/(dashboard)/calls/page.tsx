@@ -32,6 +32,7 @@ interface CallRecord {
   fileName?: string | null;
   audioUrl?: string | null;
   source: string;
+  direction?: string | null;
   rawTranscript: string;
   employeeName?: string | null;
   customerName?: string | null;
@@ -39,6 +40,7 @@ interface CallRecord {
   carModel?: string | null;
   carColor?: string | null;
   carBrand?: string | null;
+  carTransmission?: string | null;
   outcome?: string | null;
   reasonPurchased?: string | null;
   reasonNotPurchased?: string | null;
@@ -61,6 +63,40 @@ function resolveAudioUrl(c: CallRecord): string | null {
   if (c.audioUrl) return c.audioUrl;
   if (c.fileName && /^https?:\/\//i.test(c.fileName)) return c.fileName;
   return null;
+}
+
+function transmissionLabel(value: string | null | undefined, t: (k: string) => string) {
+  if (value === "mexanika") return t("calls.transmissionManual");
+  if (value === "avtomat") return t("calls.transmissionAuto");
+  return value || "—";
+}
+
+function DirectionBadge({ direction, t }: { direction?: string | null; t: (k: string) => string }) {
+  if (direction === "incoming") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400"
+        title={t("calls.directionIncoming")}
+      >
+        <span aria-hidden>🟢</span>
+        <span aria-hidden>↙</span>
+        {t("calls.directionIncoming")}
+      </span>
+    );
+  }
+  if (direction === "outgoing") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-md bg-sky-500/15 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:text-sky-400"
+        title={t("calls.directionOutgoing")}
+      >
+        <span aria-hidden>🔵</span>
+        <span aria-hidden>↗</span>
+        {t("calls.directionOutgoing")}
+      </span>
+    );
+  }
+  return <span className="text-xs text-muted-foreground">—</span>;
 }
 
 export default function CallsPage() {
@@ -196,10 +232,12 @@ export default function CallsPage() {
             <THead>
               <TR>
                 <TH>{t("calls.colDate")}</TH>
+                <TH>{t("calls.colDirection")}</TH>
                 <TH>{t("calls.colEmployee")}</TH>
                 <TH>{t("calls.colCustomer")}</TH>
                 <TH>{t("calls.colModel")}</TH>
                 <TH>{t("calls.colColor")}</TH>
+                <TH>{t("calls.colTransmission")}</TH>
                 <TH>{t("calls.colOutcome")}</TH>
                 <TH>{t("calls.colLeadSource")}</TH>
                 <TH>{t("calls.colCountry")}</TH>
@@ -219,6 +257,7 @@ export default function CallsPage() {
                   onClick={() => setActive(c)}
                 >
                   <TD className="whitespace-nowrap text-sm">{formatDateTime(c.callDate)}</TD>
+                  <TD><DirectionBadge direction={c.direction} t={t} /></TD>
                   <TD>{c.employeeName ?? "—"}</TD>
                   <TD>
                     <div className="font-medium">{c.customerName ?? "—"}</div>
@@ -230,6 +269,7 @@ export default function CallsPage() {
                       : "—"}
                   </TD>
                   <TD>{c.carColor ?? "—"}</TD>
+                  <TD>{transmissionLabel(c.carTransmission, t)}</TD>
                   <TD>
                     {c.outcome ? (
                       <Badge className={cn("text-xs", CALL_OUTCOME_COLOR[c.outcome])}>
@@ -256,7 +296,7 @@ export default function CallsPage() {
                         {t("calls.listenAudio")}
                       </a>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">{t("calls.noAudio")}</span>
                     )}
                   </TD>
                 </TR>
@@ -278,13 +318,18 @@ export default function CallsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div><span className="text-muted-foreground">{t("calls.colDate")}:</span> {formatDateTime(active.callDate)}</div>
               <div><span className="text-muted-foreground">{t("calls.duration")}:</span> {formatDuration(active.durationSeconds)}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">{t("calls.colDirection")}:</span>
+                <DirectionBadge direction={active.direction} t={t} />
+              </div>
               <div><span className="text-muted-foreground">{t("calls.colEmployee")}:</span> {active.employeeName ?? "—"}</div>
               <div><span className="text-muted-foreground">{t("calls.colCustomer")}:</span> {active.customerName ?? "—"}</div>
+              <div><span className="text-muted-foreground">{t("calls.colTransmission")}:</span> {transmissionLabel(active.carTransmission, t)}</div>
               <div><span className="text-muted-foreground">{t("calls.colCountry")}:</span> {active.country ?? "—"}</div>
               <div><span className="text-muted-foreground">{t("calls.colSource")}:</span> {CALL_SOURCE_TYPE[active.source] ?? active.source}</div>
             </div>
 
-            {resolveAudioUrl(active) && (
+            {resolveAudioUrl(active) ? (
               <a
                 href={resolveAudioUrl(active) as string}
                 target="_blank"
@@ -294,6 +339,8 @@ export default function CallsPage() {
                 <Headphones className="h-4 w-4" />
                 {t("calls.listenAudio")}
               </a>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("calls.noAudio")}</p>
             )}
 
             {active.summary && (

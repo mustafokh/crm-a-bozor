@@ -5,6 +5,7 @@ export interface CallAnalysis {
   carModel: string | null;
   carColor: string | null;
   carBrand: string | null;
+  carTransmission: string | null;
   budget: string | null;
   outcome: string | null;
   reasonPurchased: string | null;
@@ -31,6 +32,7 @@ JSON struktura:
   "car_model": "qiziqqan avtomobil modeli",
   "car_color": "qiziqqan rang",
   "car_brand": "brend nomi",
+  "car_transmission": "mijoz qiziqqan avtomobilning uzatmalar qutisi turi: mexanika | avtomat | null (agar aytilmagan bo'lsa)",
   "budget": "mijoz aytgan byudjet/narx diapazoni (matn, masalan '15000$' yoki '200 mln')",
   "outcome": "purchased | not_purchased | pending | callback_needed",
   "reason_purchased": "agar sotib olgan bo'lsa - sababi",
@@ -50,6 +52,33 @@ function asNullableString(value: unknown): string | null {
   return s.length > 0 ? s : null;
 }
 
+/** AI javobini mexanika | avtomat | null ga normalizatsiya qiladi. */
+export function normalizeTransmission(value: unknown): string | null {
+  const raw = asNullableString(value);
+  if (!raw) return null;
+  const v = raw.toLowerCase();
+  if (
+    v.includes("mexanik") ||
+    v.includes("manual") ||
+    v.includes("mt") ||
+    v === "механика" ||
+    v.includes("механ")
+  ) {
+    return "mexanika";
+  }
+  if (
+    v.includes("avtomat") ||
+    v.includes("automat") ||
+    v.includes("auto") ||
+    v === "at" ||
+    v.includes("cvt") ||
+    v.includes("автомат")
+  ) {
+    return "avtomat";
+  }
+  return null;
+}
+
 function parseAnalysisPayload(raw: unknown): CallAnalysis {
   const data = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
@@ -59,6 +88,7 @@ function parseAnalysisPayload(raw: unknown): CallAnalysis {
     carModel: asNullableString(data.car_model),
     carColor: asNullableString(data.car_color),
     carBrand: asNullableString(data.car_brand),
+    carTransmission: normalizeTransmission(data.car_transmission),
     budget: asNullableString(data.budget),
     outcome: asNullableString(data.outcome),
     reasonPurchased: asNullableString(data.reason_purchased),
@@ -110,7 +140,7 @@ export async function analyzeTranscript(rawTranscript: string): Promise<CallAnal
 
   const payload = await res.json();
   const content = payload?.choices?.[0]?.message?.content;
-  if (!content || typeof content !== "string") {
+  if (typeof content !== "string" || !content) {
     throw new Error("OpenAI javobida matn yo'q");
   }
 
