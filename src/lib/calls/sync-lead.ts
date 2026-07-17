@@ -24,6 +24,8 @@ export async function syncCallToLead(params: {
   analysis: CallAnalysis;
   rawTranscript: string;
   callId: string;
+  /** WhatsApp/Telegram thread yangilanganda yangi conversation qator qo'shmasdan oxirgisini yangilaydi. */
+  refreshConversation?: boolean;
 }) {
   const leadSource = CHANNEL_TO_LEAD[params.channelSource] ?? "CALL";
   const outcome = params.analysis.outcome
@@ -50,6 +52,7 @@ export async function syncCallToLead(params: {
     carMake: params.analysis.carBrand,
     carModel: params.analysis.carModel,
     carColor: params.analysis.carColor,
+    budget: params.analysis.budget,
     outcome,
     carInterest: buildCarInterest({
       carMake: params.analysis.carBrand,
@@ -94,13 +97,35 @@ export async function syncCallToLead(params: {
 
   const conversationUserId = assignedToId ?? lead.assignedToId;
   if (conversationUserId) {
-    await prisma.leadConversation.create({
-      data: {
-        leadId: lead.id,
-        userId: conversationUserId,
-        ...talkFields,
-      },
-    });
+    if (params.refreshConversation) {
+      const latest = await prisma.leadConversation.findFirst({
+        where: { leadId: lead.id },
+        orderBy: { talkedAt: "desc" },
+        select: { id: true },
+      });
+      if (latest) {
+        await prisma.leadConversation.update({
+          where: { id: latest.id },
+          data: talkFields,
+        });
+      } else {
+        await prisma.leadConversation.create({
+          data: {
+            leadId: lead.id,
+            userId: conversationUserId,
+            ...talkFields,
+          },
+        });
+      }
+    } else {
+      await prisma.leadConversation.create({
+        data: {
+          leadId: lead.id,
+          userId: conversationUserId,
+          ...talkFields,
+        },
+      });
+    }
   }
 
   // Production DB'da audio_url ustuni hali bo'lmasligi mumkin:

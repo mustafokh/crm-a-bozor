@@ -6,6 +6,12 @@ import { normalizePhone, extractPhoneFromText } from "@/lib/phone";
 import { detectCountryFromPhone } from "@/lib/calls/phone-country";
 import { analyzeTranscript } from "@/lib/calls/analyze-transcript";
 import { syncCallToLead } from "@/lib/calls/sync-lead";
+import {
+  appendTranscriptLine,
+  labelMessage,
+  mergeThreadTranscripts,
+  resolveMessageDirection,
+} from "@/lib/calls/messaging-thread";
 
 interface CallPayload {
   phone?: string;
@@ -16,7 +22,13 @@ interface CallPayload {
   file_name?: string;
   audio_url?: string;
   source?: string;
+  /** WhatsApp/Telegram: inbound (mijoz) | outbound (xodim) */
+  direction?: string;
+  from_me?: boolean | string | number;
 }
+
+/** Messaging kanallarida bitta contact = bitta call yozuvi (suhbat thread). */
+const THREAD_SOURCES = new Set(["whatsapp", "telegram"]);
 
 const MAX_BODY_BYTES = 512 * 1024;
 const MAX_TRANSCRIPT_LEN = 100_000;
@@ -100,15 +112,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ma'lumotlarni tekshiring", fields }, { status: 400 });
   }
 
-  let analysis;
-  try {
-    analysis = await analyzeTranscript(rawTranscript);
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "AI tahlil xatosi";
-    const status = message.includes("OPENAI_API_KEY") ? 503 : 502;
-    return NextResponse.json({ error: message }, { status });
-  }
-
   let phone: string;
   let country: string | null;
   try {
@@ -120,14 +123,65 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
   }
 
-  const callData: Parameters<typeof prisma.call.create>[0]["data"] = {
-    phone,
-    country,
-    callDate: callDate!,
-    durationSeconds,
-    fileName,
-    source: sourceRaw,
-    rawTranscript,
+  // WhatsApp/Telegram: xabar ID bo'yicha takroriy POST'ni o'tkazib yuborish
+  if (THREAD_SOURCES.has(sourceRaw) && fileName) {
+    const duplicate = await prisma.call.findFirst({
+      where: { fileName, source: sourceRaw },
+      select: { id: true, leadId: true },
+    });
+    if (duplicate) {
+      return NextResponse.json(
+        { ok: true, id: duplicate.id, lead_id: duplicate.leadId, deduped: true },
+        { status: 200 }
+      );
+    }
+  }
+
+  let transcriptForAnalysis = rawTranscript;
+  let existingThreadId: string | null = null;
+  let siblingIds: string[] = [];
+  let refreshConversation = false;
+
+  if (THREAD_SOURCES.has(sourceRaw)) {
+    const direction = resolveMessageDirection(body);
+    const labeledLine = labelMessage(rawTranscript, direction);
+
+    const threads = await prisma.call.findMany({
+      where: { phone, source: sourceRaw },
+      orderBy: [{ callDate: "asc" }, { createdAt: "asc" }],
+      select: { id: true, rawTranscript: true },
+    });
+
+    if (threads.length > 0) {
+      const mergedHistory = mergeThreadTranscripts(threads.map((t) => t.rawTranscript));
+      transcriptForAnalysis = appendTranscriptLine(mergedHistory, labeledLine);
+      // Eng yangisini asosiy yozuv sifatida saqlaymiz
+      existingThreadId = threads[threads.length - 1]!.id;
+      siblingIds = threads.slice(0, -1).map((t) => t.id);
+      refreshConversation = true;
+    } else {
+      transcriptForAnalysis = labeledLine;
+    }
+
+    if (transcriptForAnalysis.length > MAX_TRANSCRIPT_LEN) {
+      // Eng yangi qismni saqlab, eski qatorlarni qisqartiramiz
+      let clipped = transcriptForAnalysis.slice(-MAX_TRANSCRIPT_LEN);
+      const nl = clipped.indexOf("\n");
+      if (nl > 0 && nl < 400) clipped = clipped.slice(nl + 1);
+      transcriptForAnalysis = clipped;
+    }
+  }
+
+  let analysis;
+  try {
+    analysis = await analyzeTranscript(transcriptForAnalysis);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "AI tahlil xatosi";
+    const status = message.includes("OPENAI_API_KEY") ? 503 : 502;
+    return NextResponse.json({ error: message }, { status });
+  }
+
+  const analysisFields = {
     employeeName: analysis.employeeName,
     customerName: analysis.customerName,
     customerIntent: analysis.customerIntent,
@@ -143,6 +197,17 @@ export async function POST(req: Request) {
     followUpNeeded: analysis.followUpNeeded,
     followUpNote: analysis.followUpNote,
   };
+
+  const callData: Parameters<typeof prisma.call.create>[0]["data"] = {
+    phone,
+    country,
+    callDate: callDate!,
+    durationSeconds,
+    fileName,
+    source: sourceRaw,
+    rawTranscript: transcriptForAnalysis,
+    ...analysisFields,
+  };
   // audio_url’ni to‘g‘ridan-to‘g‘ri calls.audio_url ustuniga yozmaymiz.
   // Production DB’da ustun bo‘lmasligi mumkin, shunda 500 chiqadi.
   // Admin panel esa fileName ichidagi URL bo‘yicha audio_url’ni topib beradi.
@@ -150,19 +215,42 @@ export async function POST(req: Request) {
   // Minimal select: agar production’da yangi audio_url ustuni hali qo‘shilmagan bo‘lsa
   // SELECT/RETURNING audio_url sabab 500 bermasligi uchun faqat id ni qaytaramiz.
   let callId: string;
+  let createdNew = false;
+
   try {
-    const call = await prisma.call.create({
-      data: callData,
-      select: { id: true },
-    });
-    callId = call.id;
+    if (existingThreadId) {
+      await prisma.call.update({
+        where: { id: existingThreadId },
+        data: {
+          country,
+          callDate: callDate!,
+          durationSeconds,
+          fileName,
+          rawTranscript: transcriptForAnalysis,
+          ...analysisFields,
+        },
+        select: { id: true },
+      });
+      callId = existingThreadId;
+
+      if (siblingIds.length > 0) {
+        await prisma.call.deleteMany({ where: { id: { in: siblingIds } } });
+      }
+    } else {
+      const call = await prisma.call.create({
+        data: callData,
+        select: { id: true },
+      });
+      callId = call.id;
+      createdNew = true;
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : "call.create failed";
-    console.error("POST /api/calls create error:", message);
+    console.error("POST /api/calls create/update error:", message);
     // audio_url ustuni hali DB’da yo‘qligi sabab insert qismi yiqilsa,
     // audioUrl’ni tushirib retry qilamiz. Prisma xabarida `audio_url` yoki `calls.audio_url` bo‘lishi mumkin.
     const m = message.toLowerCase();
-    if (audioParsed.value && m.includes("audio_url") && m.includes("does not exist")) {
+    if (!existingThreadId && audioParsed.value && m.includes("audio_url") && m.includes("does not exist")) {
       const retryData = { ...(callData as any) } as any;
       delete retryData.audioUrl;
       const retryCall = await prisma.call.create({
@@ -170,6 +258,7 @@ export async function POST(req: Request) {
         select: { id: true },
       });
       callId = retryCall.id;
+      createdNew = true;
     } else {
       return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
     }
@@ -183,8 +272,9 @@ export async function POST(req: Request) {
       callDate: callDate!,
       channelSource: sourceRaw,
       analysis,
-      rawTranscript,
+      rawTranscript: transcriptForAnalysis,
       callId,
+      refreshConversation,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "syncCallToLead failed";
@@ -214,6 +304,7 @@ export async function POST(req: Request) {
       lead_id: lead.id,
       country,
       audio_url: audioParsed.value,
+      thread_updated: !createdNew,
       analysis: {
         employee_name: analysis.employeeName,
         customer_name: analysis.customerName,
@@ -221,6 +312,7 @@ export async function POST(req: Request) {
         car_model: analysis.carModel,
         car_color: analysis.carColor,
         car_brand: analysis.carBrand,
+        budget: analysis.budget,
         outcome: analysis.outcome,
         lead_source: analysis.leadSource,
         summary: analysis.summary,
@@ -229,7 +321,7 @@ export async function POST(req: Request) {
         follow_up_note: analysis.followUpNote,
       },
     },
-    { status: 201 }
+    { status: createdNew ? 201 : 200 }
   );
 }
 

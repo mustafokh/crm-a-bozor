@@ -1,0 +1,79 @@
+name: Deploy WhatsApp Service to Azure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "whatsapp-service/**"
+      - ".github/workflows/azure-whatsapp-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_WEBAPP_NAME: mkus-whatsapp-fed7cd
+  AZURE_RESOURCE_GROUP: mkus-crm-rg
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: whatsapp-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: whatsapp-service/package-lock.json
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+          npm prune --omit=dev
+
+      - name: Pack deploy zip
+        run: |
+          chmod +x start.sh
+          zip -r ../whatsapp-deploy.zip package.json package-lock.json dist node_modules start.sh
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure App Service
+        run: |
+          az webapp config appsettings set \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.AZURE_WEBAPP_NAME }}" \
+            --settings \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+              ENABLE_ORYX_BUILD=false \
+              WEBSITE_RUN_FROM_PACKAGE=0 \
+              NODE_ENV=production \
+              WEBSITES_PORT=8080 \
+              PORT=8080 \
+              HOST=0.0.0.0 \
+              AUTH_DIR=/home/auth_info \
+              CRM_API_URL=https://mkus-crm-fed7cd.azurewebsites.net \
+              IGNORE_GROUPS=true
+
+          az webapp config set \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.AZURE_WEBAPP_NAME }}" \
+            --startup-file "bash start.sh" \
+            --always-on true
+
+      - name: Deploy zip to Azure
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: whatsapp-deploy.zip

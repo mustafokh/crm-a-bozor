@@ -5,6 +5,7 @@ export interface CallAnalysis {
   carModel: string | null;
   carColor: string | null;
   carBrand: string | null;
+  budget: string | null;
   outcome: string | null;
   reasonPurchased: string | null;
   reasonNotPurchased: string | null;
@@ -19,6 +20,9 @@ const SYSTEM_PROMPT = `Sen avtosalon uchun qo'ng'iroq/suhbat matnlarini tahlil q
 Berilgan transkriptdan quyidagi ma'lumotlarni aniq JSON formatda chiqar. 
 Agar biror ma'lumot matnda yo'q yoki aniq bo'lmasa, null qo'y - hech narsani o'ylab topma.
 
+WhatsApp/Telegram suhbatlari odatda "Mijoz: ..." va "Xodim: ..." qatorlari bilan beriladi.
+BUTUN suhbat tarixini hisobga ol — ma'lumotlar turli xabarlarda bo'lishi mumkin (masalan, model birinchi xabarda, rang keyinroq).
+
 JSON struktura:
 {
   "employee_name": "qo'ng'iroqqa javob bergan/gaplashgan xodim ismi (agar aytilgan bo'lsa)",
@@ -27,6 +31,7 @@ JSON struktura:
   "car_model": "qiziqqan avtomobil modeli",
   "car_color": "qiziqqan rang",
   "car_brand": "brend nomi",
+  "budget": "mijoz aytgan byudjet/narx diapazoni (matn, masalan '15000$' yoki '200 mln')",
   "outcome": "purchased | not_purchased | pending | callback_needed",
   "reason_purchased": "agar sotib olgan bo'lsa - sababi",
   "reason_not_purchased": "agar sotib olmagan bo'lsa - sababi (narx, model yo'qligi, boshqa joydan olgani va h.k.)",
@@ -54,6 +59,7 @@ function parseAnalysisPayload(raw: unknown): CallAnalysis {
     carModel: asNullableString(data.car_model),
     carColor: asNullableString(data.car_color),
     carBrand: asNullableString(data.car_brand),
+    budget: asNullableString(data.budget),
     outcome: asNullableString(data.outcome),
     reasonPurchased: asNullableString(data.reason_purchased),
     reasonNotPurchased: asNullableString(data.reason_not_purchased),
