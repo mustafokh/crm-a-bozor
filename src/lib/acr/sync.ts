@@ -3,17 +3,58 @@
  * Runs inside CRM (Always On). No laptop / no extra App Service.
  */
 
-import { execFile } from "node:child_process";
-import { promises as fs } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
-import { promisify } from "node:util";
+import { execFile } from "child_process";
+import { promises as fs } from "fs";
+import { tmpdir } from "os";
+import { join, dirname } from "path";
+import { promisify } from "util";
 
 const execFileAsync = promisify(execFile);
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 
 type DriveFile = { id: string; name: string };
+
+type AcrStatus = {
+  service: string;
+  ok: boolean;
+  poller_started: boolean;
+  enabled: boolean;
+  ready: string | null;
+  folder_name: string;
+  whisper_language: string;
+  interval_ms: number;
+  last_poll_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+  last_processed: number;
+};
+
+const acrStatus: AcrStatus = {
+  service: "mkus-acr-in-crm",
+  ok: true,
+  poller_started: false,
+  enabled: false,
+  ready: null,
+  folder_name: "Cube ACR",
+  whisper_language: "en",
+  interval_ms: 300_000,
+  last_poll_at: null,
+  last_success_at: null,
+  last_error: null,
+  last_processed: 0,
+};
+
+export function getAcrStatus(): AcrStatus {
+  const c = cfg();
+  acrStatus.enabled = c.enabled;
+  acrStatus.ready = ready(c);
+  acrStatus.folder_name = c.folderName;
+  acrStatus.whisper_language = c.whisperLanguage;
+  acrStatus.interval_ms = c.intervalMs;
+  acrStatus.poller_started = Boolean(globalThis.__acrPollerStarted);
+  return { ...acrStatus };
+}
 
 function cfg() {
   return {
@@ -225,6 +266,7 @@ export async function runAcrSyncOnce(): Promise<{
 }> {
   const c = cfg();
   const skip = ready(c);
+  acrStatus.last_poll_at = new Date().toISOString();
   if (skip) return { ok: true, processed: 0, skipped: skip };
 
   try {
@@ -272,12 +314,19 @@ export async function runAcrSyncOnce(): Promise<{
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error(`[acr-sync] failed ${amr.name}:`, msg);
+        acrStatus.last_error = msg;
       }
     }
+    acrStatus.last_processed = count;
+    acrStatus.last_success_at = new Date().toISOString();
+    acrStatus.last_error = null;
+    acrStatus.ok = true;
     return { ok: true, processed: count, skipped: null };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[acr-sync] poll error:", msg);
+    acrStatus.last_error = msg;
+    acrStatus.ok = false;
     return { ok: false, processed: 0, skipped: null, error: msg };
   }
 }
@@ -296,6 +345,7 @@ export function startAcrPoller() {
     return;
   }
   globalThis.__acrPollerStarted = true;
+  acrStatus.poller_started = true;
   console.log(`[acr-sync] started, interval=${c.intervalMs}ms folder=${c.folderName}`);
   const tick = () => {
     void runAcrSyncOnce();

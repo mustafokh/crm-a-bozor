@@ -46,7 +46,7 @@ jobs:
           az webapp config set \
             --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
             --name "${{ env.AZURE_WEBAPP_NAME }}" \
-            --startup-file "node server.js" \
+            --startup-file "bash start.sh" \
             --always-on true
 
       - name: Install and build

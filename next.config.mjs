@@ -18,8 +18,20 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   poweredByHeader: false,
+  serverExternalPackages: [],
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts"],
+  },
+  webpack: (config, { nextRuntime }) => {
+    if (nextRuntime === "edge") {
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        "@/lib/acr/sync": false,
+        "./instrumentation.node": false,
+        "./instrumentation.node.js": false,
+      };
+    }
+    return config;
   },
   images: {
     // Cross-compile (Mac → Azure Linux) da sharp binary muammosini oldini olish

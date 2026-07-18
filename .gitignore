@@ -36,3 +36,10 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Local Azure zip artifacts (never commit)
+crm-deploy.zip
+whatsapp-deploy.zip
+acr-service/acr-deploy-linux.zip
+acr-service/node_modules/
+**/node_modules.tar.gz
