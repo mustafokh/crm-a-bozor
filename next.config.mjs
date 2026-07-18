@@ -22,6 +22,8 @@ const nextConfig = {
     optimizePackageImports: ["lucide-react", "recharts"],
   },
   images: {
+    // Cross-compile (Mac → Azure Linux) da sharp binary muammosini oldini olish
+    unoptimized: true,
     remotePatterns: [
       { protocol: "https", hostname: "**" },
     ],

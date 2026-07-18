@@ -1,7 +1,9 @@
 // MKUS CRM — Prisma schema (PostgreSQL)
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Local Mac + Azure Linux App Service
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
