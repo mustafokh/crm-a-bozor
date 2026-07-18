@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Filter,
-  Phone,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -18,6 +17,5 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.dashboard", groupKey: "nav.group.general", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard" },
   { labelKey: "nav.leads", groupKey: "nav.group.general", href: "/leads", icon: Filter, permission: "leads" },
-  { labelKey: "nav.calls", groupKey: "nav.group.general", href: "/calls", icon: Phone, permission: "leads" },
   { labelKey: "nav.settings", groupKey: "nav.group.management", href: "/settings", icon: Settings, permission: "settings" },
 ];

@@ -4,6 +4,7 @@ import { requirePermission, logActivity } from "@/lib/api-auth";
 import { LEAD_STATUS } from "@/lib/constants";
 import { detectCountryFromPhone } from "@/lib/country-display";
 import { extractTalkFields } from "@/lib/lead-helpers";
+import { LATEST_CALL_INCLUDE, withLatestCall } from "@/lib/calls/latest-call";
 
 const leadInclude = {
   assignedTo: { select: { id: true, name: true } },
@@ -11,6 +12,7 @@ const leadInclude = {
     orderBy: { talkedAt: "desc" as const },
     include: { user: { select: { id: true, name: true } } },
   },
+  calls: LATEST_CALL_INCLUDE,
   _count: { select: { conversations: true } },
 };
 
@@ -27,7 +29,7 @@ export async function GET(
     include: leadInclude,
   });
   if (!lead) return NextResponse.json({ error: "Topilmadi" }, { status: 404 });
-  return NextResponse.json({ lead });
+  return NextResponse.json({ lead: withLatestCall(lead) });
 }
 
 export async function PATCH(
@@ -82,7 +84,7 @@ export async function PATCH(
       description: `${lead.fullName} lidi "${LEAD_STATUS[body.status] ?? body.status}" holatiga o'tdi`,
     });
   }
-  return NextResponse.json({ lead });
+  return NextResponse.json({ lead: withLatestCall(lead) });
 }
 
 export async function DELETE(

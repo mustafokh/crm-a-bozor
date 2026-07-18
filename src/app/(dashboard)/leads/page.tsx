@@ -10,6 +10,13 @@ import { PageHeader } from "@/components/page-header";
 import { PublicLinksCard } from "@/components/public/public-links-card";
 import { TalkFields, emptyTalkForm, talkFormFromRecord } from "@/components/leads/talk-fields";
 import { TalkRecordCard, type TalkRecord } from "@/components/leads/talk-record-card";
+import {
+  CallTranscriptBlock,
+  DirectionBadge,
+  ListenAudioLink,
+  transmissionLabel,
+  type LatestCallInfo,
+} from "@/components/leads/call-extras";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
@@ -42,6 +49,7 @@ interface Lead extends TalkRecord {
   assignedTo?: { id: string; name: string } | null;
   conversations?: TalkRecord[];
   _count?: { conversations: number };
+  latestCall?: LatestCallInfo | null;
 }
 
 interface Meta {
@@ -411,22 +419,25 @@ function LeadsPageContent() {
               <TR>
                 <TH>{t("leads.col.employee")}</TH>
                 <TH>{t("leads.col.source")}</TH>
+                <TH>{t("calls.colDirection")}</TH>
                 <TH>{t("leads.col.client")}</TH>
                 <TH>{t("col.phone")}</TH>
                 <TH>{t("leads.col.country")}</TH>
                 <TH>{t("leads.col.talkedAt")}</TH>
                 <TH>{t("leads.col.carInterest")}</TH>
                 <TH>{t("leads.col.carColor")}</TH>
+                <TH>{t("calls.colTransmission")}</TH>
                 <TH>{t("leads.col.budget")}</TH>
                 <TH>{t("leads.col.discussion")}</TH>
                 <TH>{t("leads.col.outcome")}</TH>
+                <TH>{t("calls.colAudio")}</TH>
                 <TH className="text-right">{t("common.actions")}</TH>
               </TR>
             </THead>
             <TBody>
               {filtered.length === 0 ? (
                 <TR>
-                  <TD colSpan={12} className="py-12 text-center text-muted-foreground">
+                  <TD colSpan={15} className="py-12 text-center text-muted-foreground">
                     {t("leads.empty")}
                   </TD>
                 </TR>
@@ -449,6 +460,9 @@ function LeadsPageContent() {
                         {LEAD_SOURCE[lead.source] ?? lead.source}
                       </Badge>
                     </TD>
+                    <TD>
+                      <DirectionBadge direction={lead.latestCall?.direction} />
+                    </TD>
                     <TD>{lead.fullName}</TD>
                     <TD onClick={(e) => e.stopPropagation()}>
                       <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1 text-primary hover:underline">
@@ -464,6 +478,9 @@ function LeadsPageContent() {
                     <TD>
                       <CarColorBadge color={lead.carColor} />
                     </TD>
+                    <TD className="text-sm">
+                      {transmissionLabel(lead.latestCall?.carTransmission, t)}
+                    </TD>
                     <TD className="text-sm">{lead.budget ?? "—"}</TD>
                     <TD className="max-w-[140px] text-sm text-muted-foreground">{truncate(lead.discussionNotes)}</TD>
                     <TD>
@@ -472,6 +489,9 @@ function LeadsPageContent() {
                           {outcomeLabel(lead.outcome)}
                         </Badge>
                       ) : "—"}
+                    </TD>
+                    <TD onClick={(e) => e.stopPropagation()}>
+                      <ListenAudioLink call={lead.latestCall} />
                     </TD>
                     <TD onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
@@ -635,6 +655,12 @@ function LeadsPageContent() {
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <CountryBadge country={activeLead.country} phone={activeLead.phone} />
+                    <DirectionBadge direction={activeLead.latestCall?.direction} />
+                    {activeLead.latestCall?.carTransmission && (
+                      <Badge className="bg-secondary text-secondary-foreground font-normal">
+                        {transmissionLabel(activeLead.latestCall.carTransmission, t)}
+                      </Badge>
+                    )}
                     {activeLead.outcome && (
                       <Badge className={cn("font-normal", LEAD_OUTCOME_COLOR[activeLead.outcome])}>
                         {outcomeLabel(activeLead.outcome)}
@@ -648,6 +674,9 @@ function LeadsPageContent() {
                       </Badge>
                     )}
                   </div>
+                  <div className="mt-3">
+                    <ListenAudioLink call={activeLead.latestCall} />
+                  </div>
                 </div>
                 <Button size="sm" onClick={() => { setProfileOpen(false); openTalk(activeLead); }}>
                   <MessageSquare className="h-4 w-4" /> {t("leads.addTalk")}
@@ -659,6 +688,8 @@ function LeadsPageContent() {
               <h4 className="mb-2 text-sm font-semibold">{t("leads.latestTalk")}</h4>
               <TalkRecordCard record={activeLead} />
             </div>
+
+            <CallTranscriptBlock call={activeLead.latestCall} />
 
             <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.history")}</h4>
