@@ -1,6 +1,8 @@
 import { config } from "./config.js";
 import {
+  discoverAuthSessions,
   listSessionRecords,
+  migrateLegacyFlatAuth,
   removeSessionRecord,
   upsertSessionRecord,
 } from "./session-store.js";
@@ -47,9 +49,21 @@ export async function stopSession(employeeId: string, clearAuth = false): Promis
   return true;
 }
 
-/** Boot: saqlangan sessionlarni qayta ishga tushirish */
+/** Boot: legacy auth migratsiya + saqlangan sessionlarni qayta ishga tushirish */
 export async function restoreSessions(): Promise<void> {
-  const records = await listSessionRecords();
+  try {
+    await migrateLegacyFlatAuth();
+  } catch (e) {
+    console.error("[boot] legacy auth migratsiya xato:", e);
+  }
+
+  let records = await listSessionRecords();
+  try {
+    records = await discoverAuthSessions(records);
+  } catch (e) {
+    console.error("[boot] auth discover xato:", e);
+  }
+
   console.log(`[boot] ${records.length} ta saqlangan session`);
   for (const r of records) {
     try {

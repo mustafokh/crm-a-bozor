@@ -66,7 +66,9 @@ jobs:
               SESSIONS_FILE=/home/sessions.json \
               MAX_SESSIONS=10 \
               CRM_API_URL=https://mkus-crm-fed7cd.azurewebsites.net \
-              IGNORE_GROUPS=true
+              IGNORE_GROUPS=true \
+              LEGACY_SESSION_EMPLOYEE_ID=cmrjkijva0000af0ppazu4zve \
+              LEGACY_SESSION_EMPLOYEE_NAME="Sardor Rahimov"
 
           az webapp config set \
             --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \

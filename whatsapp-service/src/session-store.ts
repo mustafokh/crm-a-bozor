@@ -57,3 +57,83 @@ export async function removeSessionRecord(employeeId: string): Promise<void> {
   store.sessions = store.sessions.filter((s) => s.employeeId !== employeeId);
   await writeStore(store);
 }
+
+/** Eski single-session layout: AUTH_DIR/creds.json (employee papkasiz) */
+async function hasFlatLegacyAuth(): Promise<boolean> {
+  try {
+    await fs.access(path.join(config.authDir, "creds.json"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Multi-session deploydan oldingi flat auth'ni employee papkasiga ko'chiradi.
+ * LEGACY_SESSION_EMPLOYEE_ID / LEGACY_SESSION_EMPLOYEE_NAME orqali belgilanadi.
+ */
+export async function migrateLegacyFlatAuth(): Promise<SessionRecord | null> {
+  if (!(await hasFlatLegacyAuth())) return null;
+
+  const employeeId = (
+    process.env.LEGACY_SESSION_EMPLOYEE_ID?.trim() ||
+    process.env.DEFAULT_SESSION_EMPLOYEE_ID?.trim() ||
+    "legacy"
+  ).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const employeeName =
+    process.env.LEGACY_SESSION_EMPLOYEE_NAME?.trim() ||
+    process.env.DEFAULT_SESSION_EMPLOYEE_NAME?.trim() ||
+    "WhatsApp";
+
+  const targetDir = path.join(config.authDir, employeeId);
+  await fs.mkdir(targetDir, { recursive: true });
+
+  const entries = await fs.readdir(config.authDir, { withFileTypes: true });
+  let moved = 0;
+  for (const ent of entries) {
+    if (!ent.isFile()) continue;
+    const from = path.join(config.authDir, ent.name);
+    const to = path.join(targetDir, ent.name);
+    try {
+      await fs.rename(from, to);
+      moved += 1;
+    } catch (e) {
+      console.error(`[boot] legacy auth move failed ${ent.name}:`, e);
+    }
+  }
+
+  console.log(
+    `[boot] legacy flat auth → ${targetDir} (${moved} fayl), emp=${employeeName}`
+  );
+  return upsertSessionRecord(employeeId, employeeName);
+}
+
+/** AUTH_DIR ichidagi employee papkalarini (creds.json bor) sessions.json ga qo'shadi */
+export async function discoverAuthSessions(
+  existing: SessionRecord[]
+): Promise<SessionRecord[]> {
+  const known = new Set(existing.map((s) => s.employeeId));
+  let entries: import("node:fs").Dirent[] = [];
+  try {
+    entries = await fs.readdir(config.authDir, { withFileTypes: true });
+  } catch {
+    return existing;
+  }
+
+  const out = [...existing];
+  for (const ent of entries) {
+    if (!ent.isDirectory()) continue;
+    const id = ent.name;
+    if (known.has(id)) continue;
+    try {
+      await fs.access(path.join(config.authDir, id, "creds.json"));
+    } catch {
+      continue;
+    }
+    const name = id === "legacy" ? "WhatsApp" : id;
+    console.log(`[boot] auth papka topildi, session qo'shiladi: ${id}`);
+    out.push(await upsertSessionRecord(id, name));
+    known.add(id);
+  }
+  return out;
+}

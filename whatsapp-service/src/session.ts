@@ -32,12 +32,23 @@ export interface SessionRuntime {
 
 const logger = pino({ level: process.env.LOG_LEVEL || "info" });
 
-/** 998901234567@s.whatsapp.net → +998901234567 */
+function lidUser(jid: string | null | undefined): string | null {
+  if (!jid) return null;
+  if (!jid.toLowerCase().endsWith("@lid")) return null;
+  return jid.split("@")[0]?.split(":")[0] || null;
+}
+
+/** 998901234567@s.whatsapp.net → +998901234567 (LID @lid emas) */
 export function jidToPhone(jid: string): string | null {
+  const lower = jid.toLowerCase();
+  // Linked ID — telefon emas; senderPn / LID cache kerak
+  if (lower.endsWith("@lid")) return null;
+  if (lower.endsWith("@g.us") || lower.endsWith("@broadcast")) return null;
+
   const user = jid.split("@")[0]?.split(":")[0];
   if (!user) return null;
   const digits = user.replace(/\D/g, "");
-  if (digits.length < 8) return null;
+  if (digits.length < 8 || digits.length > 15) return null;
   return `+${digits}`;
 }
 
@@ -85,6 +96,8 @@ export class WhatsAppSession {
   private sock: WASocket | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private stopped = false;
+  /** LID user → +phone (WhatsApp LID addressing) */
+  private lidToPhone = new Map<string, string>();
 
   constructor(employeeId: string, employeeName: string) {
     this.employeeId = employeeId;
@@ -105,8 +118,97 @@ export class WhatsAppSession {
     return authDirFor(this.employeeId);
   }
 
+  private lidMapPath(): string {
+    return `${this.authDir()}/lid-phone-map.json`;
+  }
+
   private log(msg: string, ...args: unknown[]) {
     console.log(`[wa:${this.employeeName}]`, msg, ...args);
+  }
+
+  private async loadLidMap(): Promise<void> {
+    try {
+      const raw = await fs.readFile(this.lidMapPath(), "utf8");
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      for (const [k, v] of Object.entries(parsed)) {
+        if (k && v?.startsWith("+")) this.lidToPhone.set(k, v);
+      }
+      if (this.lidToPhone.size) {
+        this.log(`LID map yuklandi: ${this.lidToPhone.size}`);
+      }
+    } catch {
+      /* yo'q */
+    }
+  }
+
+  private async saveLidMap(): Promise<void> {
+    try {
+      const obj = Object.fromEntries(this.lidToPhone);
+      await fs.writeFile(this.lidMapPath(), JSON.stringify(obj), "utf8");
+    } catch (e) {
+      this.log("LID map saqlash xato:", e);
+    }
+  }
+
+  private rememberLidPhone(lidJid: string | null | undefined, pnJid: string | null | undefined) {
+    const user = lidUser(lidJid);
+    const phone = pnJid ? jidToPhone(pnJid) : null;
+    if (!user || !phone) return;
+    if (this.lidToPhone.get(user) === phone) return;
+    this.lidToPhone.set(user, phone);
+    void this.saveLidMap();
+  }
+
+  /** Baileys LID: telefon senderPn / cache / klasik JID dan */
+  private resolveMessagePhone(msg: WAMessage): string | null {
+    const key = msg.key as WAMessage["key"] & {
+      senderPn?: string | null;
+      participantPn?: string | null;
+      remoteJidAlt?: string | null;
+      participantAlt?: string | null;
+      senderLid?: string | null;
+      participantLid?: string | null;
+    };
+
+    const pnCandidates = [
+      key.senderPn,
+      key.participantPn,
+      key.remoteJidAlt,
+      key.participantAlt,
+      key.remoteJid,
+      key.participant,
+    ];
+    let phone: string | null = null;
+    let pnSource: string | null = null;
+    for (const jid of pnCandidates) {
+      if (!jid) continue;
+      const p = jidToPhone(jid);
+      if (p) {
+        phone = p;
+        pnSource = jid;
+        break;
+      }
+    }
+
+    if (phone && pnSource) {
+      this.rememberLidPhone(key.remoteJid, pnSource);
+      this.rememberLidPhone(key.senderLid, key.senderPn || pnSource);
+      this.rememberLidPhone(key.participantLid, key.participantPn || pnSource);
+      return phone;
+    }
+
+    for (const lid of [key.remoteJid, key.senderLid, key.participantLid, key.participant]) {
+      const user = lidUser(lid);
+      if (user && this.lidToPhone.has(user)) return this.lidToPhone.get(user)!;
+    }
+
+    // Oxirgi chora: LID raqami (xabar CRM ga tushsin; keyinroq mapping to'ldiriladi)
+    const fallbackLid = lidUser(key.remoteJid);
+    if (fallbackLid && fallbackLid.length >= 10 && fallbackLid.length <= 15) {
+      this.log("LID fallback telefon:", fallbackLid);
+      return `+${fallbackLid}`;
+    }
+    return null;
   }
 
   private async handleMessage(msg: WAMessage): Promise<void> {
@@ -115,9 +217,22 @@ export class WhatsAppSession {
     if (isJidBroadcast(remote) || isJidStatusBroadcast(remote)) return;
     if (config.ignoreGroups && isJidGroup(remote)) return;
 
-    const phone = jidToPhone(remote);
+    const phone = this.resolveMessagePhone(msg);
     if (!phone) {
-      this.log("telefon ajratilmadi:", remote);
+      const k = msg.key as {
+        senderPn?: string;
+        participantPn?: string;
+        remoteJidAlt?: string;
+        senderLid?: string;
+      };
+      this.log(
+        "telefon ajratilmadi:",
+        remote,
+        `senderPn=${k.senderPn ?? "-"}`,
+        `participantPn=${k.participantPn ?? "-"}`,
+        `alt=${k.remoteJidAlt ?? "-"}`,
+        `lidMap=${this.lidToPhone.size}`
+      );
       return;
     }
 
@@ -168,6 +283,9 @@ export class WhatsAppSession {
       this.sock?.ev?.removeAllListeners("connection.update");
       this.sock?.ev?.removeAllListeners("creds.update");
       this.sock?.ev?.removeAllListeners("messages.upsert");
+      this.sock?.ev?.removeAllListeners("chats.phoneNumberShare");
+      this.sock?.ev?.removeAllListeners("contacts.upsert");
+      this.sock?.ev?.removeAllListeners("contacts.update");
       this.sock?.end?.(undefined);
     } catch {
       /* ignore */
@@ -176,6 +294,7 @@ export class WhatsAppSession {
 
     const dir = this.authDir();
     await fs.mkdir(dir, { recursive: true });
+    await this.loadLidMap();
 
     const { state, saveCreds } = await useMultiFileAuthState(dir);
     const { version } = await fetchLatestBaileysVersion();
@@ -198,6 +317,22 @@ export class WhatsAppSession {
     });
 
     this.sock.ev.on("creds.update", saveCreds);
+
+    this.sock.ev.on("chats.phoneNumberShare", ({ lid, jid }) => {
+      this.rememberLidPhone(lid, jid);
+    });
+
+    const ingestContacts = (
+      contacts: { id?: string; lid?: string; jid?: string }[]
+    ) => {
+      for (const c of contacts) {
+        const lid = c.lid || (c.id?.endsWith("@lid") ? c.id : undefined);
+        const pn = c.jid || (c.id?.endsWith("@s.whatsapp.net") ? c.id : undefined);
+        this.rememberLidPhone(lid, pn);
+      }
+    };
+    this.sock.ev.on("contacts.upsert", ingestContacts);
+    this.sock.ev.on("contacts.update", ingestContacts);
 
     this.sock.ev.on("connection.update", async (update) => {
       if (this.stopped) return;
@@ -261,6 +396,9 @@ export class WhatsAppSession {
       this.sock?.ev?.removeAllListeners("connection.update");
       this.sock?.ev?.removeAllListeners("creds.update");
       this.sock?.ev?.removeAllListeners("messages.upsert");
+      this.sock?.ev?.removeAllListeners("chats.phoneNumberShare");
+      this.sock?.ev?.removeAllListeners("contacts.upsert");
+      this.sock?.ev?.removeAllListeners("contacts.update");
       this.sock?.end?.(undefined);
     } catch {
       /* ignore */
