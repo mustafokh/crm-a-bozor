@@ -7,6 +7,7 @@ import { detectCountryFromPhone } from "@/lib/calls/phone-country";
 import { analyzeTranscript } from "@/lib/calls/analyze-transcript";
 import { syncCallToLead } from "@/lib/calls/sync-lead";
 import { resolveCallDirection } from "@/lib/calls/call-direction";
+import { inferTransmissionFromText } from "@/lib/calls/latest-call";
 import {
   appendTranscriptLine,
   labelMessage,
@@ -186,6 +187,14 @@ export async function POST(req: Request) {
     const message = e instanceof Error ? e.message : "AI tahlil xatosi";
     const status = message.includes("OPENAI_API_KEY") ? 503 : 502;
     return NextResponse.json({ error: message }, { status });
+  }
+
+  // AI null qaytarsa — matndan mexanika/avtomat ni qo‘shimcha qidiramiz
+  if (!analysis.carTransmission) {
+    analysis = {
+      ...analysis,
+      carTransmission: inferTransmissionFromText(transcriptForAnalysis),
+    };
   }
 
   const analysisFields = {
