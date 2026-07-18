@@ -45,6 +45,6 @@ export const PATH_PERMISSIONS: { prefix: string; permission: Permission }[] = [
   { prefix: "/deals", permission: "leads" },
   { prefix: "/contracts", permission: "leads" },
   { prefix: "/finance", permission: "leads" },
-  { prefix: "/employees", permission: "leads" },
+  { prefix: "/employees", permission: "settings" },
   { prefix: "/reports", permission: "leads" },
 ];

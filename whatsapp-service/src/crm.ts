@@ -7,6 +7,8 @@ export interface IncomingWhatsAppMessage {
   timestamp?: Date;
   /** true = xodim yozgan (fromMe) */
   fromMe?: boolean;
+  employeeName?: string;
+  employeeId?: string;
 }
 
 /** CRM POST /api/calls — source=whatsapp */
@@ -18,7 +20,10 @@ export async function forwardToCrm(msg: IncomingWhatsAppMessage): Promise<void> 
     source: "whatsapp",
     direction: msg.fromMe ? "outgoing" : "incoming",
     from_me: Boolean(msg.fromMe),
-    file_name: msg.messageId ? `wa:${msg.messageId}` : undefined,
+    file_name: msg.messageId
+      ? `wa:${msg.employeeId ? msg.employeeId.slice(0, 8) + ":" : ""}${msg.messageId}`
+      : undefined,
+    employee_name: msg.employeeName || undefined,
   };
 
   const url = `${config.crmApiUrl}/api/calls`;
@@ -37,5 +42,7 @@ export async function forwardToCrm(msg: IncomingWhatsAppMessage): Promise<void> 
   }
 
   const who = msg.fromMe ? "xodim" : "mijoz";
-  console.log(`[crm] OK ${res.status} ${who} phone=${msg.phone} → ${text.slice(0, 120)}`);
+  console.log(
+    `[crm] OK ${res.status} ${who} emp=${msg.employeeName ?? "-"} phone=${msg.phone} → ${text.slice(0, 100)}`
+  );
 }

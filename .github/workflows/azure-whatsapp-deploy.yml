@@ -63,6 +63,8 @@ jobs:
               PORT=8080 \
               HOST=0.0.0.0 \
               AUTH_DIR=/home/auth_info \
+              SESSIONS_FILE=/home/sessions.json \
+              MAX_SESSIONS=10 \
               CRM_API_URL=https://mkus-crm-fed7cd.azurewebsites.net \
               IGNORE_GROUPS=true
 

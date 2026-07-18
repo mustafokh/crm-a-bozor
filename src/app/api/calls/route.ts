@@ -27,6 +27,8 @@ interface CallPayload {
   /** incoming | outgoing (yoki inbound/outbound) */
   direction?: string;
   from_me?: boolean | string | number;
+  /** Xodim ismi — WhatsApp session'dan kelganda AI o'rniga ishlatiladi */
+  employee_name?: string;
 }
 
 /** Messaging kanallarida bitta contact = bitta call yozuvi (suhbat thread). */
@@ -187,6 +189,12 @@ export async function POST(req: Request) {
     const message = e instanceof Error ? e.message : "AI tahlil xatosi";
     const status = message.includes("OPENAI_API_KEY") ? 503 : 502;
     return NextResponse.json({ error: message }, { status });
+  }
+
+  // WhatsApp session xodimi — AI taxminidan ustun
+  const employeeOverride = String(body.employee_name ?? "").trim();
+  if (employeeOverride) {
+    analysis = { ...analysis, employeeName: employeeOverride };
   }
 
   // AI null qaytarsa — matndan mexanika/avtomat ni qo‘shimcha qidiramiz

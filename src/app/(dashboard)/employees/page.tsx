@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { BarsChart } from "@/components/charts";
+import { WhatsAppSessionsPanel } from "@/components/employees/whatsapp-sessions-panel";
 import { employeeKpis } from "@/lib/analytics";
 import type { Role } from "@/lib/constants";
 import { formatMoney, initials, cn } from "@/lib/utils";
@@ -29,6 +30,8 @@ export default async function EmployeesPage() {
         <StatCard title={t("nav.leads")} value={totalLeads} icon={Filter} accent="warning" />
         <StatCard title={t("finance.commissions")} value={formatMoney(totalCommission, "USD", { compact: true })} icon={Percent} accent="primary" />
       </div>
+
+      <WhatsAppSessionsPanel />
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
