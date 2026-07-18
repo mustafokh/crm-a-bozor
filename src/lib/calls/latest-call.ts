@@ -13,22 +13,45 @@ export interface LatestCallInfo {
   rawTranscript?: string | null;
   callDate?: string | null;
   durationSeconds?: number | null;
+  summary?: string | null;
+  outcome?: string | null;
+  carModel?: string | null;
+  carColor?: string | null;
+  employeeName?: string | null;
 }
 
+/** Lead profilidagi Call tarixi uchun to'liqroq maydonlar. */
+export type CallHistoryItem = LatestCallInfo;
+
+const CALL_SELECT = {
+  id: true,
+  source: true,
+  audioUrl: true,
+  fileName: true,
+  direction: true,
+  carTransmission: true,
+  rawTranscript: true,
+  callDate: true,
+  durationSeconds: true,
+  summary: true,
+  outcome: true,
+  carModel: true,
+  carColor: true,
+  employeeName: true,
+} as const;
+
+/** Oxirgi N ta Call (tarix + latestCall = calls[0]). */
+export const CALLS_HISTORY_INCLUDE = {
+  orderBy: { callDate: "desc" as const },
+  take: 50,
+  select: CALL_SELECT,
+};
+
+/** Orqaga moslik: faqat oxirgi call. */
 export const LATEST_CALL_INCLUDE = {
   orderBy: { callDate: "desc" as const },
   take: 1,
-  select: {
-    id: true,
-    source: true,
-    audioUrl: true,
-    fileName: true,
-    direction: true,
-    carTransmission: true,
-    rawTranscript: true,
-    callDate: true,
-    durationSeconds: true,
-  },
+  select: CALL_SELECT,
 };
 
 /** Transkript oxiridagi Mijoz/Xodim qatoridan yo'nalish */
@@ -88,22 +111,24 @@ export function resolveStoredDirection(params: {
   return null;
 }
 
-export function pickLatestCall(
-  calls?: Array<{
-    id: string;
-    source?: string | null;
-    audioUrl?: string | null;
-    fileName?: string | null;
-    direction?: string | null;
-    carTransmission?: string | null;
-    rawTranscript?: string | null;
-    callDate?: Date | string | null;
-    durationSeconds?: number | null;
-  }> | null
-): LatestCallInfo | null {
-  const c = calls?.[0];
-  if (!c) return null;
+type CallRow = {
+  id: string;
+  source?: string | null;
+  audioUrl?: string | null;
+  fileName?: string | null;
+  direction?: string | null;
+  carTransmission?: string | null;
+  rawTranscript?: string | null;
+  callDate?: Date | string | null;
+  durationSeconds?: number | null;
+  summary?: string | null;
+  outcome?: string | null;
+  carModel?: string | null;
+  carColor?: string | null;
+  employeeName?: string | null;
+};
 
+export function normalizeCallItem(c: CallRow): CallHistoryItem {
   const direction = resolveStoredDirection({
     direction: c.direction,
     fileName: c.fileName,
@@ -125,14 +150,29 @@ export function pickLatestCall(
     rawTranscript: c.rawTranscript ?? null,
     callDate: c.callDate ? new Date(c.callDate).toISOString() : null,
     durationSeconds: c.durationSeconds ?? null,
+    summary: c.summary ?? null,
+    outcome: c.outcome ?? null,
+    carModel: c.carModel ?? null,
+    carColor: c.carColor ?? null,
+    employeeName: c.employeeName ?? null,
   };
 }
 
-export function withLatestCall<T extends { calls?: Parameters<typeof pickLatestCall>[0] }>(
+export function pickLatestCall(
+  calls?: CallRow[] | null
+): LatestCallInfo | null {
+  const c = calls?.[0];
+  if (!c) return null;
+  return normalizeCallItem(c);
+}
+
+/** Lead javobiga calls[] + latestCall (calls[0]) qo'shadi. */
+export function withLatestCall<T extends { calls?: CallRow[] | null }>(
   lead: T
-): Omit<T, "calls"> & { latestCall: LatestCallInfo | null } {
-  const { calls, ...rest } = lead;
-  return { ...rest, latestCall: pickLatestCall(calls) };
+): Omit<T, "calls"> & { calls: CallHistoryItem[]; latestCall: LatestCallInfo | null } {
+  const { calls: rawCalls, ...rest } = lead;
+  const calls = (rawCalls ?? []).map(normalizeCallItem);
+  return { ...rest, calls, latestCall: calls[0] ?? null };
 }
 
 export function resolveCallAudioUrl(call?: LatestCallInfo | null): string | null {

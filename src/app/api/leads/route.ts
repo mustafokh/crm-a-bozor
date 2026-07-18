@@ -1,4 +1,4 @@
-import { LATEST_CALL_INCLUDE, withLatestCall } from "@/lib/calls/latest-call";
+import { CALLS_HISTORY_INCLUDE, withLatestCall } from "@/lib/calls/latest-call";
 import { detectCountryFromPhone } from "@/lib/country-display";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +18,7 @@ const leadInclude = {
     orderBy: { talkedAt: "desc" as const },
     include: { user: { select: { id: true, name: true } } },
   },
-  calls: LATEST_CALL_INCLUDE,
+  calls: CALLS_HISTORY_INCLUDE,
 };
 
 export async function GET() {
@@ -35,7 +35,7 @@ export async function GET() {
         take: 10,
         include: { user: { select: { id: true, name: true } } },
       },
-      calls: LATEST_CALL_INCLUDE,
+      calls: CALLS_HISTORY_INCLUDE,
       _count: { select: { conversations: true } },
     },
   });

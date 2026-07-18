@@ -24,6 +24,13 @@ Agar biror ma'lumot matnda yo'q yoki aniq bo'lmasa, null qo'y - hech narsani o'y
 WhatsApp/Telegram suhbatlari odatda "Mijoz: ..." va "Xodim: ..." qatorlari bilan beriladi.
 BUTUN suhbat tarixini hisobga ol — ma'lumotlar turli xabarlarda bo'lishi mumkin (masalan, model birinchi xabarda, rang keyinroq).
 
+MUHIM — past sifatli / Whisper hallucination:
+Agar transkript gibberish, mantiqsiz so'zlar, bir-biriga bog'liq bo'lmagan random so'zlar yoki til aralashmasi bo'lib, haqiqiy suhbatga o'xshamasa (yomon audio):
+- Barcha maydonlarni null qoldir (follow_up_needed = false)
+- "outcome" ni "unclear" qilib qo'y
+- "summary" ni AYNAN shu matn qilib qo'y (o'zgartirma): Audio sifati past, aniq transkripsiya qilib bo'lmadi
+Haqiqiy suhbatni o'ylab topma.
+
 JSON struktura:
 {
   "employee_name": "qo'ng'iroqqa javob bergan/gaplashgan xodim ismi (agar aytilgan bo'lsa)",
@@ -34,7 +41,7 @@ JSON struktura:
   "car_brand": "brend nomi",
   "car_transmission": "mijoz qiziqqan avtomobilning uzatmalar qutisi turi: mexanika | avtomat | null (agar aytilmagan bo'lsa)",
   "budget": "mijoz aytgan byudjet/narx diapazoni (matn, masalan '15000$' yoki '200 mln')",
-  "outcome": "purchased | not_purchased | pending | callback_needed",
+  "outcome": "purchased | not_purchased | pending | callback_needed | unclear",
   "reason_purchased": "agar sotib olgan bo'lsa - sababi",
   "reason_not_purchased": "agar sotib olmagan bo'lsa - sababi (narx, model yo'qligi, boshqa joydan olgani va h.k.)",
   "lead_source": "website | olx | whatsapp | referral | walk_in | other | unknown",

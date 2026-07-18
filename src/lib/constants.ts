@@ -122,6 +122,7 @@ export const LEAD_OUTCOME: Record<string, string> = {
   REJECTED: "Rad etdi",
   BOUGHT: "Sotib oldi",
   NOT_INTERESTED: "Qiziqmaydi",
+  UNCLEAR: "Aniqlanmadi",
 };
 
 export const LEAD_OUTCOMES = Object.keys(LEAD_OUTCOME);
@@ -135,6 +136,7 @@ export const LEAD_OUTCOME_COLOR: Record<string, string> = {
   REJECTED: "bg-red-600 text-white",
   BOUGHT: "bg-emerald-600 text-white",
   NOT_INTERESTED: "bg-rose-600 text-white",
+  UNCLEAR: "bg-zinc-500 text-white",
 };
 
 export const CALL_OUTCOME: Record<string, string> = {
@@ -142,6 +144,7 @@ export const CALL_OUTCOME: Record<string, string> = {
   not_purchased: "Sotib olmadi",
   pending: "Kutilmoqda",
   callback_needed: "Qayta qo'ng'iroq",
+  unclear: "Aniqlanmadi",
 };
 
 export const CALL_OUTCOMES = Object.keys(CALL_OUTCOME);
@@ -151,6 +154,7 @@ export const CALL_OUTCOME_COLOR: Record<string, string> = {
   not_purchased: "bg-red-600 text-white",
   pending: "bg-amber-500 text-white",
   callback_needed: "bg-blue-700 text-white",
+  unclear: "bg-zinc-500 text-white",
 };
 
 export const CALL_LEAD_SOURCE: Record<string, string> = {

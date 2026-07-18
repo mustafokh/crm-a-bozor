@@ -1,4 +1,4 @@
-/** WhatsApp/Telegram suhbatini bitta call yozuviga birlashtirish. */
+/** WhatsApp/Telegram xabarlarini yorliqlash va AI konteksti uchun birlashtirish. */
 
 export type MessageDirection = "inbound" | "outbound";
 

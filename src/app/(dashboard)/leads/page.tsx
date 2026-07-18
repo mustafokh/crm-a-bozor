@@ -11,10 +11,12 @@ import { PublicLinksCard } from "@/components/public/public-links-card";
 import { TalkFields, emptyTalkForm, talkFormFromRecord } from "@/components/leads/talk-fields";
 import { TalkRecordCard, type TalkRecord } from "@/components/leads/talk-record-card";
 import {
+  CallHistoryCard,
   CallTranscriptBlock,
   DirectionBadge,
   ListenAudioLink,
   transmissionLabel,
+  type CallHistoryItem,
   type LatestCallInfo,
 } from "@/components/leads/call-extras";
 import { Button } from "@/components/ui/button";
@@ -50,6 +52,7 @@ interface Lead extends TalkRecord {
   conversations?: TalkRecord[];
   _count?: { conversations: number };
   latestCall?: LatestCallInfo | null;
+  calls?: CallHistoryItem[];
 }
 
 interface Meta {
@@ -692,11 +695,24 @@ function LeadsPageContent() {
             <CallTranscriptBlock call={activeLead.latestCall} />
 
             <div>
+              <h4 className="mb-3 text-sm font-semibold">{t("leads.callHistory")}</h4>
+              {(activeLead.calls?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("leads.noCallHistory")}</p>
+              ) : (
+                <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                  {activeLead.calls?.map((c) => (
+                    <CallHistoryCard key={c.id} call={c} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.history")}</h4>
               {(activeLead.conversations?.length ?? 0) === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("leads.noHistory")}</p>
               ) : (
-                <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
                   {activeLead.conversations?.map((c) => (
                     <TalkRecordCard key={c.id} record={c} compact />
                   ))}

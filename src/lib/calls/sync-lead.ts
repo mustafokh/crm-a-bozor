@@ -13,6 +13,7 @@ const OUTCOME_TO_LEAD: Record<string, string> = {
   not_purchased: "NOT_INTERESTED",
   pending: "THINKING",
   callback_needed: "CALLBACK",
+  unclear: "UNCLEAR",
 };
 
 /** Qo'ng'iroq/WhatsApp/Telegram transkriptini lidga bog'laydi yoki yangi lid yaratadi. */
@@ -24,8 +25,6 @@ export async function syncCallToLead(params: {
   analysis: CallAnalysis;
   rawTranscript: string;
   callId: string;
-  /** WhatsApp/Telegram thread yangilanganda yangi conversation qator qo'shmasdan oxirgisini yangilaydi. */
-  refreshConversation?: boolean;
 }) {
   const leadSource = CHANNEL_TO_LEAD[params.channelSource] ?? "CALL";
   const outcome = params.analysis.outcome
@@ -70,13 +69,29 @@ export async function syncCallToLead(params: {
   const fullName = params.analysis.customerName?.trim() || "Noma'lum mijoz";
 
   if (lead) {
+    // Unclear tahlil oldingi yaxshi outcome/nomni o'chirmasin
+    const isUnclear = params.analysis.outcome === "unclear";
     lead = await prisma.lead.update({
       where: { id: lead.id },
       data: {
-        fullName: params.analysis.customerName?.trim() || lead.fullName,
+        fullName: isUnclear
+          ? lead.fullName
+          : params.analysis.customerName?.trim() || lead.fullName,
         country: params.country ?? lead.country,
         source: leadSource,
-        ...talkFields,
+        talkedAt: talkFields.talkedAt,
+        discussionNotes: talkFields.discussionNotes,
+        ...(isUnclear
+          ? {}
+          : {
+              carMake: talkFields.carMake,
+              carModel: talkFields.carModel,
+              carColor: talkFields.carColor,
+              budget: talkFields.budget,
+              outcome: talkFields.outcome,
+              carInterest: talkFields.carInterest,
+              clientWants: talkFields.clientWants,
+            }),
         assignedToId: assignedToId ?? lead.assignedToId,
         status: lead.status === "CLOSED" ? "ACTIVE" : lead.status,
       },
@@ -97,35 +112,13 @@ export async function syncCallToLead(params: {
 
   const conversationUserId = assignedToId ?? lead.assignedToId;
   if (conversationUserId) {
-    if (params.refreshConversation) {
-      const latest = await prisma.leadConversation.findFirst({
-        where: { leadId: lead.id },
-        orderBy: { talkedAt: "desc" },
-        select: { id: true },
-      });
-      if (latest) {
-        await prisma.leadConversation.update({
-          where: { id: latest.id },
-          data: talkFields,
-        });
-      } else {
-        await prisma.leadConversation.create({
-          data: {
-            leadId: lead.id,
-            userId: conversationUserId,
-            ...talkFields,
-          },
-        });
-      }
-    } else {
-      await prisma.leadConversation.create({
-        data: {
-          leadId: lead.id,
-          userId: conversationUserId,
-          ...talkFields,
-        },
-      });
-    }
+    await prisma.leadConversation.create({
+      data: {
+        leadId: lead.id,
+        userId: conversationUserId,
+        ...talkFields,
+      },
+    });
   }
 
   // Production DB'da audio_url ustuni hali bo'lmasligi mumkin:

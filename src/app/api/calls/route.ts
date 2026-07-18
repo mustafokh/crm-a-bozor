@@ -14,6 +14,11 @@ import {
   mergeThreadTranscripts,
   resolveMessageDirection,
 } from "@/lib/calls/messaging-thread";
+import {
+  enforceUnclearIfNeeded,
+  isSuspiciousTranscript,
+  unclearAnalysis,
+} from "@/lib/calls/suspicious-transcript";
 
 interface CallPayload {
   phone?: string;
@@ -31,7 +36,7 @@ interface CallPayload {
   employee_name?: string;
 }
 
-/** Messaging kanallarida bitta contact = bitta call yozuvi (suhbat thread). */
+/** Messaging kanallari — AI uchun oldingi xabar kontekstini o'qiydi (yozuvlarni birlashtirmaydi). */
 const THREAD_SOURCES = new Set(["whatsapp", "telegram"]);
 
 const MAX_BODY_BYTES = 512 * 1024;
@@ -66,6 +71,14 @@ function parseAudioUrl(raw: unknown): { value: string | null; error?: string } {
 function isMissingColumnError(message: string, column: string): boolean {
   const m = message.toLowerCase();
   return m.includes(column.toLowerCase()) && (m.includes("does not exist") || m.includes("unknown column"));
+}
+
+function clipTranscript(text: string): string {
+  if (text.length <= MAX_TRANSCRIPT_LEN) return text;
+  let clipped = text.slice(-MAX_TRANSCRIPT_LEN);
+  const nl = clipped.indexOf("\n");
+  if (nl > 0 && nl < 400) clipped = clipped.slice(nl + 1);
+  return clipped;
 }
 
 /** Tashqi tizimdan qo'ng'iroq/WhatsApp transkriptini qabul qilish (X-API-Key). */
@@ -136,7 +149,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Server xatosi", detail: message }, { status: 500 });
   }
 
-  if (THREAD_SOURCES.has(sourceRaw) && fileName) {
+  // Xabar dedupe (file_name) — tarixni buzmasdan takroriy POST'ni o'tkazib yuborish
+  if (fileName) {
     const duplicate = await prisma.call.findFirst({
       where: { fileName, source: sourceRaw },
       select: { id: true, leadId: true },
@@ -149,42 +163,43 @@ export async function POST(req: Request) {
     }
   }
 
+  // Persist qilinadigan matn: messaging uchun yorliqli yangi xabar; call uchun asl transcript
+  let persistedTranscript = rawTranscript;
+  // AI ga yuboriladigan matn (WhatsApp/Telegram'da oldingi call'lar konteksti bilan)
   let transcriptForAnalysis = rawTranscript;
-  let existingThreadId: string | null = null;
-  let siblingIds: string[] = [];
-  let refreshConversation = false;
 
   if (THREAD_SOURCES.has(sourceRaw)) {
     const msgDir = resolveMessageDirection(body);
     const labeledLine = labelMessage(rawTranscript, msgDir);
+    persistedTranscript = labeledLine;
 
-    const threads = await prisma.call.findMany({
+    const previous = await prisma.call.findMany({
       where: { phone, source: sourceRaw },
       orderBy: [{ callDate: "asc" }, { createdAt: "asc" }],
-      select: { id: true, rawTranscript: true },
+      take: 40,
+      select: { rawTranscript: true },
     });
 
-    if (threads.length > 0) {
-      const mergedHistory = mergeThreadTranscripts(threads.map((t) => t.rawTranscript));
-      transcriptForAnalysis = appendTranscriptLine(mergedHistory, labeledLine);
-      existingThreadId = threads[threads.length - 1]!.id;
-      siblingIds = threads.slice(0, -1).map((t) => t.id);
-      refreshConversation = true;
+    if (previous.length > 0) {
+      const history = mergeThreadTranscripts(previous.map((t) => t.rawTranscript));
+      transcriptForAnalysis = appendTranscriptLine(history, labeledLine);
     } else {
       transcriptForAnalysis = labeledLine;
     }
 
-    if (transcriptForAnalysis.length > MAX_TRANSCRIPT_LEN) {
-      let clipped = transcriptForAnalysis.slice(-MAX_TRANSCRIPT_LEN);
-      const nl = clipped.indexOf("\n");
-      if (nl > 0 && nl < 400) clipped = clipped.slice(nl + 1);
-      transcriptForAnalysis = clipped;
-    }
+    transcriptForAnalysis = clipTranscript(transcriptForAnalysis);
   }
+
+  const suspicious = isSuspiciousTranscript(persistedTranscript, durationSeconds);
 
   let analysis;
   try {
-    analysis = await analyzeTranscript(transcriptForAnalysis);
+    if (suspicious) {
+      analysis = unclearAnalysis();
+    } else {
+      analysis = await analyzeTranscript(transcriptForAnalysis);
+      analysis = enforceUnclearIfNeeded(analysis, false);
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : "AI tahlil xatosi";
     const status = message.includes("OPENAI_API_KEY") ? 503 : 502;
@@ -197,8 +212,8 @@ export async function POST(req: Request) {
     analysis = { ...analysis, employeeName: employeeOverride };
   }
 
-  // AI null qaytarsa — matndan mexanika/avtomat ni qo‘shimcha qidiramiz
-  if (!analysis.carTransmission) {
+  // AI null qaytarsa — matndan mexanika/avtomat ni qo‘shimcha qidiramiz (unclear emas)
+  if (analysis.outcome !== "unclear" && !analysis.carTransmission) {
     analysis = {
       ...analysis,
       carTransmission: inferTransmissionFromText(transcriptForAnalysis),
@@ -232,44 +247,21 @@ export async function POST(req: Request) {
     audioUrl: audioParsed.value,
     source: sourceRaw,
     direction: callDirection,
-    rawTranscript: transcriptForAnalysis,
+    rawTranscript: persistedTranscript,
     ...analysisFields,
   };
 
   let callId: string;
-  let createdNew = false;
 
   try {
-    if (existingThreadId) {
-      await prisma.call.update({
-        where: { id: existingThreadId },
-        data: {
-          country,
-          callDate: callDate!,
-          durationSeconds,
-          fileName,
-          ...(audioParsed.value ? { audioUrl: audioParsed.value } : {}),
-          ...(callDirection ? { direction: callDirection } : {}),
-          rawTranscript: transcriptForAnalysis,
-          ...analysisFields,
-        },
-        select: { id: true },
-      });
-      callId = existingThreadId;
-      if (siblingIds.length > 0) {
-        await prisma.call.deleteMany({ where: { id: { in: siblingIds } } });
-      }
-    } else {
-      const call = await prisma.call.create({
-        data: callData,
-        select: { id: true },
-      });
-      callId = call.id;
-      createdNew = true;
-    }
+    const call = await prisma.call.create({
+      data: callData,
+      select: { id: true },
+    });
+    callId = call.id;
   } catch (e) {
     const message = e instanceof Error ? e.message : "call.create failed";
-    console.error("POST /api/calls create/update error:", message);
+    console.error("POST /api/calls create error:", message);
 
     const retryData: Record<string, unknown> = { ...callData };
     if (isMissingColumnError(message, "audio_url") || isMissingColumnError(message, "audioUrl")) {
@@ -283,32 +275,11 @@ export async function POST(req: Request) {
     }
 
     try {
-      if (existingThreadId) {
-        const updateRetry: Record<string, unknown> = {
-          country,
-          callDate: callDate!,
-          durationSeconds,
-          fileName,
-          rawTranscript: transcriptForAnalysis,
-          ...analysisFields,
-        };
-        if (retryData.audioUrl !== undefined) updateRetry.audioUrl = retryData.audioUrl;
-        if (retryData.direction !== undefined) updateRetry.direction = retryData.direction;
-        if (retryData.carTransmission === undefined) delete updateRetry.carTransmission;
-        await prisma.call.update({
-          where: { id: existingThreadId },
-          data: updateRetry as any,
-          select: { id: true },
-        });
-        callId = existingThreadId;
-      } else {
-        const retryCall = await prisma.call.create({
-          data: retryData as typeof callData,
-          select: { id: true },
-        });
-        callId = retryCall.id;
-        createdNew = true;
-      }
+      const retryCall = await prisma.call.create({
+        data: retryData as typeof callData,
+        select: { id: true },
+      });
+      callId = retryCall.id;
     } catch (e2) {
       const message2 = e2 instanceof Error ? e2.message : "call persist retry failed";
       return NextResponse.json({ error: "Server xatosi", detail: message2 }, { status: 500 });
@@ -323,9 +294,8 @@ export async function POST(req: Request) {
       callDate: callDate!,
       channelSource: sourceRaw,
       analysis,
-      rawTranscript: transcriptForAnalysis,
+      rawTranscript: persistedTranscript,
       callId,
-      refreshConversation,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "syncCallToLead failed";
@@ -353,7 +323,7 @@ export async function POST(req: Request) {
       country,
       audio_url: audioParsed.value,
       direction: callDirection,
-      thread_updated: !createdNew,
+      unclear: analysis.outcome === "unclear",
       analysis: {
         employee_name: analysis.employeeName,
         customer_name: analysis.customerName,
@@ -371,7 +341,7 @@ export async function POST(req: Request) {
         follow_up_note: analysis.followUpNote,
       },
     },
-    { status: createdNew ? 201 : 200 }
+    { status: 201 }
   );
 }
 

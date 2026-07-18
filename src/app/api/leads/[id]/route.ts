@@ -4,7 +4,7 @@ import { requirePermission, logActivity } from "@/lib/api-auth";
 import { LEAD_STATUS } from "@/lib/constants";
 import { detectCountryFromPhone } from "@/lib/country-display";
 import { extractTalkFields } from "@/lib/lead-helpers";
-import { LATEST_CALL_INCLUDE, withLatestCall } from "@/lib/calls/latest-call";
+import { CALLS_HISTORY_INCLUDE, withLatestCall } from "@/lib/calls/latest-call";
 
 const leadInclude = {
   assignedTo: { select: { id: true, name: true } },
@@ -12,7 +12,7 @@ const leadInclude = {
     orderBy: { talkedAt: "desc" as const },
     include: { user: { select: { id: true, name: true } } },
   },
-  calls: LATEST_CALL_INCLUDE,
+  calls: CALLS_HISTORY_INCLUDE,
   _count: { select: { conversations: true } },
 };
 

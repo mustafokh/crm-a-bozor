@@ -1,14 +1,18 @@
 "use client";
 
-import { Headphones } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronUp, Headphones } from "lucide-react";
 import { useI18n } from "@/components/language-provider";
 import {
   resolveCallAudioUrl,
+  type CallHistoryItem,
   type LatestCallInfo,
 } from "@/lib/calls/latest-call";
-import { cn } from "@/lib/utils";
+import { CALL_OUTCOME_COLOR, CALL_SOURCE_TYPE } from "@/lib/constants";
+import { formatDateTime, cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
-export type { LatestCallInfo };
+export type { LatestCallInfo, CallHistoryItem };
 
 export function transmissionLabel(
   value: string | null | undefined,
@@ -102,6 +106,73 @@ export function CallTranscriptBlock({ call }: { call?: LatestCallInfo | null }) 
       <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary/60 p-3 text-xs">
         {call.rawTranscript}
       </pre>
+    </div>
+  );
+}
+
+export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const sourceLabel =
+    (call.source && CALL_SOURCE_TYPE[call.source]) || call.source || "—";
+  const outcomeLabel = call.outcome
+    ? t(`enum.callOutcome.${call.outcome}`) || call.outcome
+    : null;
+  const summary =
+    call.summary?.trim() ||
+    (call.rawTranscript?.trim().slice(0, 120) || "—");
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {call.callDate ? formatDateTime(call.callDate) : "—"}
+            </span>
+            <Badge className="bg-secondary text-secondary-foreground font-normal">
+              {sourceLabel}
+            </Badge>
+            <DirectionBadge direction={call.direction} />
+            {outcomeLabel && (
+              <Badge
+                className={cn(
+                  "font-normal text-xs",
+                  CALL_OUTCOME_COLOR[call.outcome!] || "bg-secondary text-secondary-foreground"
+                )}
+              >
+                {outcomeLabel}
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm leading-snug text-foreground/90 line-clamp-2">{summary}</p>
+          {(call.carModel || call.employeeName) && (
+            <p className="text-xs text-muted-foreground">
+              {[call.carModel, call.carColor, call.employeeName].filter(Boolean).join(" · ")}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? t("leads.hideFull") : t("leads.viewFull")}
+          {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-2 border-t border-border pt-3">
+          <ListenAudioLink call={call} />
+          {call.rawTranscript?.trim() ? (
+            <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary/60 p-3 text-xs">
+              {call.rawTranscript}
+            </pre>
+          ) : (
+            <p className="text-xs text-muted-foreground">—</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
