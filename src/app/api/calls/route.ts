@@ -7,6 +7,10 @@ import { detectCountryFromPhone } from "@/lib/calls/phone-country";
 import { analyzeTranscript } from "@/lib/calls/analyze-transcript";
 import { syncCallToLead } from "@/lib/calls/sync-lead";
 import { resolveCallDirection } from "@/lib/calls/call-direction";
+import {
+  formatTranscriptAsDialog,
+  isAlreadyLabeledDialog,
+} from "@/lib/calls/format-transcript";
 import { inferTransmissionFromText } from "@/lib/calls/latest-call";
 import {
   appendTranscriptLine,
@@ -164,24 +168,49 @@ export async function POST(req: Request) {
   }
 
   // Persist qilinadigan matn: messaging uchun yorliqli yangi xabar; call uchun asl transcript
+  // rawTranscript hech qachon formatlangan matn bilan yozilmaydi
   let persistedTranscript = rawTranscript;
   // AI ga yuboriladigan matn (WhatsApp/Telegram'da oldingi call'lar konteksti bilan)
   let transcriptForAnalysis = rawTranscript;
+  let formattedTranscript: string | null = null;
 
   if (THREAD_SOURCES.has(sourceRaw)) {
     const msgDir = resolveMessageDirection(body);
     const labeledLine = labelMessage(rawTranscript, msgDir);
     persistedTranscript = labeledLine;
+    // WhatsApp/Telegram allaqachon Mijoz:/Xodim: — reformatsiz nusxa
+    formattedTranscript = labeledLine;
 
-    const previous = await prisma.call.findMany({
-      where: { phone, source: sourceRaw },
-      orderBy: [{ callDate: "asc" }, { createdAt: "asc" }],
-      take: 40,
-      select: { rawTranscript: true },
-    });
+    let previous: { rawTranscript: string; formattedTranscript?: string | null }[] = [];
+    try {
+      previous = await prisma.call.findMany({
+        where: { phone, source: sourceRaw },
+        orderBy: [{ callDate: "asc" }, { createdAt: "asc" }],
+        take: 40,
+        select: { rawTranscript: true, formattedTranscript: true },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (
+        isMissingColumnError(msg, "formatted_transcript") ||
+        isMissingColumnError(msg, "formattedTranscript")
+      ) {
+        previous = await prisma.call.findMany({
+          where: { phone, source: sourceRaw },
+          orderBy: [{ callDate: "asc" }, { createdAt: "asc" }],
+          take: 40,
+          select: { rawTranscript: true },
+        });
+      } else {
+        throw e;
+      }
+    }
 
     if (previous.length > 0) {
-      const history = mergeThreadTranscripts(previous.map((t) => t.rawTranscript));
+      const historyParts = previous.map(
+        (t) => t.formattedTranscript?.trim() || t.rawTranscript
+      );
+      const history = mergeThreadTranscripts(historyParts);
       transcriptForAnalysis = appendTranscriptLine(history, labeledLine);
     } else {
       transcriptForAnalysis = labeledLine;
@@ -191,6 +220,26 @@ export async function POST(req: Request) {
   }
 
   const suspicious = isSuspiciousTranscript(persistedTranscript, durationSeconds);
+
+  // Telefon qo'ng'iroqlari: tahlildan oldin dialog formatlash
+  if (sourceRaw === "call" && !suspicious) {
+    if (isAlreadyLabeledDialog(persistedTranscript)) {
+      formattedTranscript = persistedTranscript;
+    } else {
+      try {
+        formattedTranscript = await formatTranscriptAsDialog(persistedTranscript);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.error("POST /api/calls formatTranscript failed:", message);
+        formattedTranscript = null;
+      }
+    }
+  }
+
+  // Asosiy AI tahlili: formatted bo'lsa uni, aks holda raw/thread matnini ishlat
+  if (formattedTranscript && sourceRaw === "call") {
+    transcriptForAnalysis = formattedTranscript;
+  }
 
   let analysis;
   try {
@@ -248,6 +297,7 @@ export async function POST(req: Request) {
     source: sourceRaw,
     direction: callDirection,
     rawTranscript: persistedTranscript,
+    formattedTranscript,
     ...analysisFields,
   };
 
@@ -272,6 +322,12 @@ export async function POST(req: Request) {
     }
     if (isMissingColumnError(message, "direction")) {
       delete retryData.direction;
+    }
+    if (
+      isMissingColumnError(message, "formatted_transcript") ||
+      isMissingColumnError(message, "formattedTranscript")
+    ) {
+      delete retryData.formattedTranscript;
     }
 
     try {
@@ -323,6 +379,7 @@ export async function POST(req: Request) {
       country,
       audio_url: audioParsed.value,
       direction: callDirection,
+      formatted_transcript: formattedTranscript,
       unclear: analysis.outcome === "unclear",
       analysis: {
         employee_name: analysis.employeeName,
@@ -419,6 +476,7 @@ export async function GET(req: Request) {
         fileName: true,
         source: true,
         rawTranscript: true,
+        formattedTranscript: true,
         employeeName: true,
         customerName: true,
         customerIntent: true,

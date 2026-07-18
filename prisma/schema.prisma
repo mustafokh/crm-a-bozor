@@ -213,6 +213,8 @@ model Call {
   /** incoming = mijoz bizga, outgoing = xodim mijozga */
   direction        String?  // incoming | outgoing
   rawTranscript    String   @map("raw_transcript") @db.Text
+  /** Mijoz:/Xodim: dialog formatidagi transkript (AI yoki messaging yorlig'i) */
+  formattedTranscript String? @map("formatted_transcript") @db.Text
 
   // AI tahlili natijalari
   employeeName       String?  @map("employee_name")

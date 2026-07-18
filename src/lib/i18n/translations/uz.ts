@@ -529,6 +529,11 @@ export const uz: TranslationDict = {
   "calls.reasonPurchased": "Sotib olish sababi",
   "calls.reasonNotPurchased": "Sotib olmaslik sababi",
   "calls.rawTranscript": "Asl transkript",
+  "calls.formattedTranscript": "Dialog",
+  "calls.showRaw": "Asl transkript",
+  "calls.showFormatted": "Dialog ko'rinishi",
+  "calls.speakerCustomer": "Mijoz",
+  "calls.speakerEmployee": "Xodim",
 
   "reports.subtitleFilter": "Sana oralig'i bo'yicha hisobotlar va export",
   "reports.reportType": "Hisobot turi",

@@ -11,6 +11,7 @@ import {
 import { CALL_OUTCOME_COLOR, CALL_SOURCE_TYPE } from "@/lib/constants";
 import { formatDateTime, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { TranscriptDialogView } from "@/components/leads/transcript-dialog";
 
 export type { LatestCallInfo, CallHistoryItem };
 
@@ -98,15 +99,12 @@ export function ListenAudioLink({
 }
 
 export function CallTranscriptBlock({ call }: { call?: LatestCallInfo | null }) {
-  const { t } = useI18n();
-  if (!call?.rawTranscript?.trim()) return null;
+  if (!call?.rawTranscript?.trim() && !call?.formattedTranscript?.trim()) return null;
   return (
-    <div>
-      <p className="mb-1 text-sm font-medium">{t("calls.rawTranscript")}</p>
-      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary/60 p-3 text-xs">
-        {call.rawTranscript}
-      </pre>
-    </div>
+    <TranscriptDialogView
+      formattedTranscript={call.formattedTranscript}
+      rawTranscript={call.rawTranscript}
+    />
   );
 }
 
@@ -120,7 +118,9 @@ export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
     : null;
   const summary =
     call.summary?.trim() ||
-    (call.rawTranscript?.trim().slice(0, 120) || "—");
+    (call.formattedTranscript?.trim().slice(0, 120) ||
+      call.rawTranscript?.trim().slice(0, 120) ||
+      "—");
 
   return (
     <div className="rounded-xl border border-border bg-card p-3">
@@ -164,10 +164,11 @@ export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
       {open && (
         <div className="mt-3 space-y-2 border-t border-border pt-3">
           <ListenAudioLink call={call} />
-          {call.rawTranscript?.trim() ? (
-            <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary/60 p-3 text-xs">
-              {call.rawTranscript}
-            </pre>
+          {call.formattedTranscript?.trim() || call.rawTranscript?.trim() ? (
+            <TranscriptDialogView
+              formattedTranscript={call.formattedTranscript}
+              rawTranscript={call.rawTranscript}
+            />
           ) : (
             <p className="text-xs text-muted-foreground">—</p>
           )}

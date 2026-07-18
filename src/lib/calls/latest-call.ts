@@ -11,6 +11,7 @@ export interface LatestCallInfo {
   direction?: string | null;
   carTransmission?: string | null;
   rawTranscript?: string | null;
+  formattedTranscript?: string | null;
   callDate?: string | null;
   durationSeconds?: number | null;
   summary?: string | null;
@@ -31,6 +32,7 @@ const CALL_SELECT = {
   direction: true,
   carTransmission: true,
   rawTranscript: true,
+  formattedTranscript: true,
   callDate: true,
   durationSeconds: true,
   summary: true,
@@ -99,13 +101,16 @@ export function resolveStoredDirection(params: {
   fileName?: string | null;
   source?: string | null;
   rawTranscript?: string | null;
+  formattedTranscript?: string | null;
 }): CallDirection | null {
   if (params.direction === "incoming" || params.direction === "outgoing") {
     return params.direction;
   }
   const fromFile = parseDirectionFromFileName(params.fileName);
   if (fromFile) return fromFile;
-  const fromText = inferDirectionFromTranscript(params.rawTranscript);
+  const fromText = inferDirectionFromTranscript(
+    params.formattedTranscript || params.rawTranscript
+  );
   if (fromText) return fromText;
   if (params.source === "whatsapp" || params.source === "telegram") return "incoming";
   return null;
@@ -119,6 +124,7 @@ type CallRow = {
   direction?: string | null;
   carTransmission?: string | null;
   rawTranscript?: string | null;
+  formattedTranscript?: string | null;
   callDate?: Date | string | null;
   durationSeconds?: number | null;
   summary?: string | null;
@@ -134,11 +140,12 @@ export function normalizeCallItem(c: CallRow): CallHistoryItem {
     fileName: c.fileName,
     source: c.source,
     rawTranscript: c.rawTranscript,
+    formattedTranscript: c.formattedTranscript,
   });
   const carTransmission =
     c.carTransmission === "mexanika" || c.carTransmission === "avtomat"
       ? c.carTransmission
-      : inferTransmissionFromText(c.rawTranscript);
+      : inferTransmissionFromText(c.formattedTranscript || c.rawTranscript);
 
   return {
     id: c.id,
@@ -148,6 +155,7 @@ export function normalizeCallItem(c: CallRow): CallHistoryItem {
     direction,
     carTransmission,
     rawTranscript: c.rawTranscript ?? null,
+    formattedTranscript: c.formattedTranscript ?? null,
     callDate: c.callDate ? new Date(c.callDate).toISOString() : null,
     durationSeconds: c.durationSeconds ?? null,
     summary: c.summary ?? null,

@@ -512,6 +512,11 @@ export const en: TranslationDict = {
   "calls.reasonPurchased": "Purchase reason",
   "calls.reasonNotPurchased": "No purchase reason",
   "calls.rawTranscript": "Raw transcript",
+  "calls.formattedTranscript": "Dialog",
+  "calls.showRaw": "Raw transcript",
+  "calls.showFormatted": "Dialog view",
+  "calls.speakerCustomer": "Customer",
+  "calls.speakerEmployee": "Employee",
 
   "reports.subtitleFilter": "Reports and export by date range",
   "reports.reportType": "Report type",

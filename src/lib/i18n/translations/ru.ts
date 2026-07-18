@@ -512,6 +512,11 @@ export const ru: TranslationDict = {
   "calls.reasonPurchased": "Причина покупки",
   "calls.reasonNotPurchased": "Причина отказа",
   "calls.rawTranscript": "Исходный транскрипт",
+  "calls.formattedTranscript": "Диалог",
+  "calls.showRaw": "Исходный транскрипт",
+  "calls.showFormatted": "Вид диалога",
+  "calls.speakerCustomer": "Клиент",
+  "calls.speakerEmployee": "Сотрудник",
 
   "reports.subtitleFilter": "Отчёты и экспорт по периоду",
   "reports.reportType": "Тип отчёта",
