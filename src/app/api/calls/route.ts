@@ -23,6 +23,7 @@ import {
   isSuspiciousTranscript,
   unclearAnalysis,
 } from "@/lib/calls/suspicious-transcript";
+import { whisperFromAudioUrl } from "@/lib/calls/whisper-from-url";
 
 interface CallPayload {
   phone?: string;
@@ -104,7 +105,7 @@ export async function POST(req: Request) {
 
   const phoneRaw = String(body.phone ?? "").trim();
   const phoneExtracted = extractPhoneFromText(phoneRaw);
-  const rawTranscript = String(body.raw_transcript ?? body.transcript ?? "").trim();
+  let rawTranscript = String(body.raw_transcript ?? body.transcript ?? "").trim();
   const fileName = body.file_name != null ? String(body.file_name).trim() || null : null;
   const audioParsed = parseAudioUrl(body.audio_url);
   const callDateRaw = String(body.call_date ?? "").trim();
@@ -120,6 +121,20 @@ export async function POST(req: Request) {
     fileName,
     source: sourceRaw,
   });
+
+  // Phone calls: if audio_url present and transcript empty → Whisper (en) in CRM (laptop off)
+  if (!rawTranscript && audioParsed.value && !audioParsed.error && sourceRaw === "call") {
+    try {
+      rawTranscript = await whisperFromAudioUrl(audioParsed.value);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("POST /api/calls whisper-from-url:", msg);
+      return NextResponse.json(
+        { error: "Whisper transkripsiya xatosi", detail: msg },
+        { status: 502 }
+      );
+    }
+  }
 
   const fields: Record<string, string> = {};
   if (!phoneRaw) fields.phone = "Telefon talab qilinadi";
