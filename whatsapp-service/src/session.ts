@@ -4,6 +4,7 @@ import makeWASocket, {
   getContentType,
   isJidBroadcast,
   isJidGroup,
+  isJidNewsletter,
   isJidStatusBroadcast,
   makeCacheableSignalKeyStore,
   useMultiFileAuthState,
@@ -41,20 +42,53 @@ function lidUser(jid: string | null | undefined): string | null {
 /** 998901234567@s.whatsapp.net → +998901234567 (LID @lid emas) */
 export function jidToPhone(jid: string): string | null {
   const lower = jid.toLowerCase();
-  // Linked ID — telefon emas; senderPn / LID cache kerak
+  // Linked ID / group / broadcast / newsletter — telefon emas
   if (lower.endsWith("@lid")) return null;
-  if (lower.endsWith("@g.us") || lower.endsWith("@broadcast")) return null;
+  if (
+    lower.endsWith("@g.us") ||
+    lower.endsWith("@broadcast") ||
+    lower.endsWith("@newsletter")
+  ) {
+    return null;
+  }
 
   const user = jid.split("@")[0]?.split(":")[0];
   if (!user) return null;
   const digits = user.replace(/\D/g, "");
+  // E.164: typically 8–15; reject very long LID-like digit strings
   if (digits.length < 8 || digits.length > 15) return null;
   return `+${digits}`;
 }
 
-function extractText(msg: WAMessage): string | null {
-  const m = msg.message;
+type WaMsgContent = NonNullable<WAMessage["message"]>;
+
+function unwrapMessageContent(msg: WAMessage): WaMsgContent | null {
+  let m: WaMsgContent | null | undefined = msg.message;
   if (!m) return null;
+  // Ephemeral / view-once / edit wrappers
+  for (let i = 0; i < 4; i++) {
+    const cur: WaMsgContent = m;
+    const next: WaMsgContent | null | undefined =
+      cur.ephemeralMessage?.message ||
+      cur.viewOnceMessage?.message ||
+      cur.viewOnceMessageV2?.message ||
+      cur.viewOnceMessageV2Extension?.message ||
+      cur.documentWithCaptionMessage?.message ||
+      cur.editedMessage?.message;
+    if (!next) break;
+    m = next;
+  }
+  return m ?? null;
+}
+
+function extractText(msg: WAMessage): string | null {
+  const m = unwrapMessageContent(msg);
+  if (!m) return null;
+
+  // Protocol / reaction — matn yo'q, CRM ga yuborilmaydi
+  if (m.protocolMessage || m.reactionMessage || m.pollUpdateMessage) {
+    return null;
+  }
 
   if (typeof m.conversation === "string" && m.conversation.trim()) {
     return m.conversation.trim();
@@ -160,7 +194,7 @@ export class WhatsAppSession {
   }
 
   /** Baileys LID: telefon senderPn / cache / klasik JID dan */
-  private resolveMessagePhone(msg: WAMessage): string | null {
+  private resolveMessagePhoneSync(msg: WAMessage): string | null {
     const key = msg.key as WAMessage["key"] & {
       senderPn?: string | null;
       participantPn?: string | null;
@@ -202,22 +236,75 @@ export class WhatsAppSession {
       if (user && this.lidToPhone.has(user)) return this.lidToPhone.get(user)!;
     }
 
-    // Oxirgi chora: LID raqami (xabar CRM ga tushsin; keyinroq mapping to'ldiriladi)
-    const fallbackLid = lidUser(key.remoteJid);
-    if (fallbackLid && fallbackLid.length >= 10 && fallbackLid.length <= 15) {
-      this.log("LID fallback telefon:", fallbackLid);
-      return `+${fallbackLid}`;
+    return null;
+  }
+
+  /** LID xabarlar uchun store / onWhatsApp orqali telefon topish */
+  private async resolveMessagePhone(msg: WAMessage): Promise<string | null> {
+    const sync = this.resolveMessagePhoneSync(msg);
+    if (sync) return sync;
+
+    const key = msg.key as WAMessage["key"] & {
+      remoteJid?: string | null;
+      senderLid?: string | null;
+      participantLid?: string | null;
+      participant?: string | null;
+    };
+    const lidJids = [key.remoteJid, key.senderLid, key.participantLid, key.participant].filter(
+      (j): j is string => Boolean(j && j.toLowerCase().endsWith("@lid"))
+    );
+    if (!lidJids.length || !this.sock) return null;
+
+    const store = (this.sock as WASocket & { store?: { contacts?: Map<string, { id?: string; lid?: string; jid?: string }> } })
+      .store;
+    if (store?.contacts) {
+      for (const lidJid of lidJids) {
+        const lidUserId = lidUser(lidJid);
+        for (const c of store.contacts.values()) {
+          const match =
+            c.lid === lidJid ||
+            c.id === lidJid ||
+            (lidUserId && lidUser(c.lid || c.id) === lidUserId);
+          if (!match) continue;
+          const pn = c.jid || (c.id?.endsWith("@s.whatsapp.net") ? c.id : undefined);
+          const phone = pn ? jidToPhone(pn) : null;
+          if (phone) {
+            this.rememberLidPhone(lidJid, pn!);
+            this.log("LID store → telefon:", phone);
+            return phone;
+          }
+        }
+      }
     }
+
+    try {
+      for (const lidJid of lidJids) {
+        const results = await this.sock.onWhatsApp(lidJid);
+        for (const r of results ?? []) {
+          const phone = r.jid ? jidToPhone(r.jid) : null;
+          if (phone) {
+            this.rememberLidPhone(lidJid, r.jid);
+            this.log("LID onWhatsApp → telefon:", phone);
+            return phone;
+          }
+        }
+      }
+    } catch (e) {
+      this.log("LID onWhatsApp xato:", e);
+    }
+
     return null;
   }
 
   private async handleMessage(msg: WAMessage): Promise<void> {
     const remote = msg.key.remoteJid;
     if (!remote) return;
-    if (isJidBroadcast(remote) || isJidStatusBroadcast(remote)) return;
+    if (isJidBroadcast(remote) || isJidStatusBroadcast(remote) || isJidNewsletter(remote)) {
+      return;
+    }
     if (config.ignoreGroups && isJidGroup(remote)) return;
 
-    const phone = this.resolveMessagePhone(msg);
+    const phone = await this.resolveMessagePhone(msg);
     if (!phone) {
       const k = msg.key as {
         senderPn?: string;
@@ -237,7 +324,10 @@ export class WhatsAppSession {
     }
 
     const text = extractText(msg);
-    if (!text) return;
+    if (!text) {
+      this.log("matn yo'q (reaction/protocol/bo'sh), skip:", remote);
+      return;
+    }
 
     const ts = msg.messageTimestamp
       ? new Date(Number(msg.messageTimestamp) * 1000)
