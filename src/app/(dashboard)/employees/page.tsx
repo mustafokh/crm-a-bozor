@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { BarsChart } from "@/components/charts";
 import { WhatsAppSessionsPanel } from "@/components/employees/whatsapp-sessions-panel";
+import { TelegramSessionsPanel } from "@/components/employees/telegram-sessions-panel";
 import { employeeKpis } from "@/lib/analytics";
 import type { Role } from "@/lib/constants";
 import { formatMoney, initials, cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export default async function EmployeesPage() {
       </div>
 
       <WhatsAppSessionsPanel />
+      <TelegramSessionsPanel />
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
