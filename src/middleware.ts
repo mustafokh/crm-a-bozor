@@ -107,7 +107,7 @@ export async function middleware(req: NextRequest) {
   // Eski modullardan lidlar sahifasiga
   const LEGACY_PATHS = [
     "/inventory", "/incoming", "/customers", "/deals",
-    "/contracts", "/finance", "/employees", "/reports",
+    "/contracts", "/finance", "/reports",
   ];
   if (LEGACY_PATHS.some((p) => pathname.startsWith(p))) {
     const url = req.nextUrl.clone();
