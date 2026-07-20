@@ -15,10 +15,16 @@ import {
   CallTranscriptBlock,
   DirectionBadge,
   ListenAudioLink,
+  MessageHistoryCard,
   transmissionLabel,
   type CallHistoryItem,
   type LatestCallInfo,
 } from "@/components/leads/call-extras";
+import {
+  partitionCallHistory,
+  pickLatestPhoneCall,
+} from "@/lib/calls/call-history-helpers";
+import { filterManualConversations } from "@/lib/lead-helpers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
@@ -52,6 +58,7 @@ interface Lead extends TalkRecord {
   conversations?: TalkRecord[];
   _count?: { conversations: number };
   latestCall?: LatestCallInfo | null;
+  latestPhoneCall?: LatestCallInfo | null;
   calls?: CallHistoryItem[];
 }
 
@@ -187,6 +194,23 @@ function LeadsPageContent() {
       );
     });
   }, [leads, search, filterSource, filterEmployee, filterCountry, filterColor, filterOutcome, filterCar, filterToday, filterUnassigned]);
+
+  const profilePhoneCalls = useMemo(
+    () => partitionCallHistory(activeLead?.calls ?? []).phoneCalls,
+    [activeLead?.calls]
+  );
+  const profileMessages = useMemo(
+    () => partitionCallHistory(activeLead?.calls ?? []).messages,
+    [activeLead?.calls]
+  );
+  const profileLatestPhoneCall = useMemo(
+    () => pickLatestPhoneCall(activeLead?.calls ?? []),
+    [activeLead?.calls]
+  );
+  const profileManualTalks = useMemo(
+    () => filterManualConversations(activeLead?.conversations),
+    [activeLead?.conversations]
+  );
 
   const sourceCounts = useMemo(() => {
     const counts: Record<string, number> = { ALL: leads.length };
@@ -464,7 +488,7 @@ function LeadsPageContent() {
                       </Badge>
                     </TD>
                     <TD>
-                      <DirectionBadge direction={lead.latestCall?.direction} />
+                      <DirectionBadge direction={lead.latestPhoneCall?.direction ?? lead.latestCall?.direction} />
                     </TD>
                     <TD>{lead.fullName}</TD>
                     <TD onClick={(e) => e.stopPropagation()}>
@@ -482,7 +506,7 @@ function LeadsPageContent() {
                       <CarColorBadge color={lead.carColor} />
                     </TD>
                     <TD className="text-sm">
-                      {transmissionLabel(lead.latestCall?.carTransmission, t)}
+                      {transmissionLabel(lead.latestPhoneCall?.carTransmission ?? lead.latestCall?.carTransmission, t)}
                     </TD>
                     <TD className="text-sm">{lead.budget ?? "—"}</TD>
                     <TD className="max-w-[140px] text-sm text-muted-foreground">{truncate(lead.discussionNotes)}</TD>
@@ -494,7 +518,7 @@ function LeadsPageContent() {
                       ) : "—"}
                     </TD>
                     <TD onClick={(e) => e.stopPropagation()}>
-                      <ListenAudioLink call={lead.latestCall} />
+                      <ListenAudioLink call={lead.latestPhoneCall ?? lead.latestCall} />
                     </TD>
                     <TD onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
@@ -658,10 +682,10 @@ function LeadsPageContent() {
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <CountryBadge country={activeLead.country} phone={activeLead.phone} />
-                    <DirectionBadge direction={activeLead.latestCall?.direction} />
-                    {activeLead.latestCall?.carTransmission && (
+                    <DirectionBadge direction={profileLatestPhoneCall?.direction ?? activeLead.latestCall?.direction} />
+                    {profileLatestPhoneCall?.carTransmission && (
                       <Badge className="bg-secondary text-secondary-foreground font-normal">
-                        {transmissionLabel(activeLead.latestCall.carTransmission, t)}
+                        {transmissionLabel(profileLatestPhoneCall.carTransmission, t)}
                       </Badge>
                     )}
                     {activeLead.outcome && (
@@ -669,16 +693,14 @@ function LeadsPageContent() {
                         {outcomeLabel(activeLead.outcome)}
                       </Badge>
                     )}
-                    {(activeLead._count?.conversations ?? activeLead.conversations?.length ?? 0) > 0 && (
+                    {(profileManualTalks.length > 0) && (
                       <Badge className="bg-secondary text-secondary-foreground font-normal">
-                        {t("leads.talkCount", {
-                          count: activeLead._count?.conversations ?? activeLead.conversations?.length ?? 0,
-                        })}
+                        {t("leads.talkCount", { count: profileManualTalks.length })}
                       </Badge>
                     )}
                   </div>
                   <div className="mt-3">
-                    <ListenAudioLink call={activeLead.latestCall} />
+                    <ListenAudioLink call={profileLatestPhoneCall ?? activeLead.latestCall} />
                   </div>
                 </div>
                 <Button size="sm" onClick={() => { setProfileOpen(false); openTalk(activeLead); }}>
@@ -692,33 +714,44 @@ function LeadsPageContent() {
               <TalkRecordCard record={activeLead} />
             </div>
 
-            <CallTranscriptBlock call={activeLead.latestCall} />
+            <CallTranscriptBlock call={profileLatestPhoneCall} />
+
+            <div>
+              <h4 className="mb-3 text-sm font-semibold">{t("leads.messageHistory")}</h4>
+              {profileMessages.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("leads.noMessageHistory")}</p>
+              ) : (
+                <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                  {profileMessages.map((c) => (
+                    <MessageHistoryCard key={c.id} call={c} />
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.callHistory")}</h4>
-              {(activeLead.calls?.length ?? 0) === 0 ? (
+              {profilePhoneCalls.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("leads.noCallHistory")}</p>
               ) : (
                 <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
-                  {activeLead.calls?.map((c) => (
+                  {profilePhoneCalls.map((c) => (
                     <CallHistoryCard key={c.id} call={c} />
                   ))}
                 </div>
               )}
             </div>
 
+            {profileManualTalks.length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.history")}</h4>
-              {(activeLead.conversations?.length ?? 0) === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("leads.noHistory")}</p>
-              ) : (
-                <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                  {activeLead.conversations?.map((c) => (
-                    <TalkRecordCard key={c.id} record={c} compact />
-                  ))}
-                </div>
-              )}
+              <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
+                {profileManualTalks.map((c) => (
+                  <TalkRecordCard key={c.id} record={c} compact />
+                ))}
+              </div>
             </div>
+            )}
           </div>
         ) : null}
       </Modal>

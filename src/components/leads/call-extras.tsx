@@ -4,6 +4,12 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp, Headphones } from "lucide-react";
 import { useI18n } from "@/components/language-provider";
 import {
+  displayInteractionSummary,
+  isMessagingSource,
+  shouldShowCallOutcome,
+  shouldShowCarDetails,
+} from "@/lib/calls/call-history-helpers";
+import {
   resolveCallAudioUrl,
   type CallHistoryItem,
   type LatestCallInfo,
@@ -11,7 +17,7 @@ import {
 import { CALL_OUTCOME_COLOR, CALL_SOURCE_TYPE } from "@/lib/constants";
 import { formatDateTime, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { TranscriptDialogView } from "@/components/leads/transcript-dialog";
+import { TranscriptBubbles, TranscriptDialogView } from "@/components/leads/transcript-dialog";
 
 export type { LatestCallInfo, CallHistoryItem };
 
@@ -99,13 +105,21 @@ export function ListenAudioLink({
 }
 
 export function CallTranscriptBlock({ call }: { call?: LatestCallInfo | null }) {
-  if (!call?.rawTranscript?.trim() && !call?.formattedTranscript?.trim()) return null;
+  if (!call || isMessagingSource(call.source)) return null;
+  if (!call.rawTranscript?.trim() && !call.formattedTranscript?.trim()) return null;
   return (
     <TranscriptDialogView
       formattedTranscript={call.formattedTranscript}
       rawTranscript={call.rawTranscript}
     />
   );
+}
+
+export function MessageTranscriptBlock({ call }: { call?: LatestCallInfo | null }) {
+  if (!call || !isMessagingSource(call.source)) return null;
+  const text = call.formattedTranscript?.trim() || call.rawTranscript?.trim();
+  if (!text) return null;
+  return <TranscriptBubbles text={text} />;
 }
 
 export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
@@ -116,11 +130,9 @@ export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
   const outcomeLabel = call.outcome
     ? t(`enum.callOutcome.${call.outcome}`) || call.outcome
     : null;
-  const summary =
-    call.summary?.trim() ||
-    (call.formattedTranscript?.trim().slice(0, 120) ||
-      call.rawTranscript?.trim().slice(0, 120) ||
-      "—");
+  const summary = displayInteractionSummary(call);
+  const showOutcome = shouldShowCallOutcome(call);
+  const showCarDetails = shouldShowCarDetails(call);
 
   return (
     <div className="rounded-xl border border-border bg-card p-3">
@@ -134,7 +146,7 @@ export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
               {sourceLabel}
             </Badge>
             <DirectionBadge direction={call.direction} />
-            {outcomeLabel && (
+            {showOutcome && outcomeLabel && (
               <Badge
                 className={cn(
                   "font-normal text-xs",
@@ -146,7 +158,7 @@ export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
             )}
           </div>
           <p className="text-sm leading-snug text-foreground/90 line-clamp-2">{summary}</p>
-          {(call.carModel || call.employeeName) && (
+          {showCarDetails && (
             <p className="text-xs text-muted-foreground">
               {[call.carModel, call.carColor, call.employeeName].filter(Boolean).join(" · ")}
             </p>
@@ -173,6 +185,43 @@ export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
             <p className="text-xs text-muted-foreground">—</p>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+export function MessageHistoryCard({ call }: { call: CallHistoryItem }) {
+  const { t } = useI18n();
+  const sourceLabel =
+    (call.source && CALL_SOURCE_TYPE[call.source]) || call.source || "—";
+  const text = call.formattedTranscript?.trim() || call.rawTranscript?.trim();
+  const summary = displayInteractionSummary(call);
+  const showCarDetails = shouldShowCarDetails(call);
+
+  return (
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">
+          {call.callDate ? formatDateTime(call.callDate) : "—"}
+        </span>
+        <Badge className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-normal">
+          {sourceLabel}
+        </Badge>
+        <DirectionBadge direction={call.direction} />
+        {call.employeeName && (
+          <span className="text-foreground/80">{call.employeeName}</span>
+        )}
+      </div>
+      {text ? (
+        <TranscriptBubbles text={text} className="max-h-48" />
+      ) : (
+        <p className="text-sm leading-snug text-foreground/90">{summary}</p>
+      )}
+      {showCarDetails && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {t("leads.col.carInterest")}:{" "}
+          {[call.carModel, call.carColor].filter(Boolean).join(" · ")}
+        </p>
       )}
     </div>
   );

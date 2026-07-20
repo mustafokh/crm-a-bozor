@@ -174,13 +174,23 @@ export function pickLatestCall(
   return normalizeCallItem(c);
 }
 
-/** Lead javobiga calls[] + latestCall (calls[0]) qo'shadi. */
 export function withLatestCall<T extends { calls?: CallRow[] | null }>(
   lead: T
-): Omit<T, "calls"> & { calls: CallHistoryItem[]; latestCall: LatestCallInfo | null } {
+): Omit<T, "calls"> & {
+  calls: CallHistoryItem[];
+  latestCall: LatestCallInfo | null;
+  latestPhoneCall: LatestCallInfo | null;
+} {
   const { calls: rawCalls, ...rest } = lead;
   const calls = (rawCalls ?? []).map(normalizeCallItem);
-  return { ...rest, calls, latestCall: calls[0] ?? null };
+  const latestPhoneCall =
+    calls.find((c) => c.source === "call" || !c.source) ?? null;
+  return {
+    ...rest,
+    calls,
+    latestCall: calls[0] ?? null,
+    latestPhoneCall,
+  };
 }
 
 export function resolveCallAudioUrl(call?: LatestCallInfo | null): string | null {

@@ -4,6 +4,7 @@ import { verifyApiKey } from "@/lib/api-key-auth";
 import { requirePermission } from "@/lib/api-auth";
 import { normalizePhone, extractPhoneFromText } from "@/lib/phone";
 import { detectCountryFromPhone } from "@/lib/calls/phone-country";
+import { analyzeMessagingTranscript } from "@/lib/calls/analyze-messaging";
 import { analyzeTranscript } from "@/lib/calls/analyze-transcript";
 import { syncCallToLead } from "@/lib/calls/sync-lead";
 import { resolveCallDirection } from "@/lib/calls/call-direction";
@@ -234,7 +235,10 @@ export async function POST(req: Request) {
     transcriptForAnalysis = clipTranscript(transcriptForAnalysis);
   }
 
-  const suspicious = isSuspiciousTranscript(persistedTranscript, durationSeconds);
+  const isMessaging = THREAD_SOURCES.has(sourceRaw);
+  const suspicious = isMessaging
+    ? false
+    : isSuspiciousTranscript(persistedTranscript, durationSeconds);
 
   // Telefon qo'ng'iroqlari: tahlildan oldin dialog formatlash
   if (sourceRaw === "call" && !suspicious) {
@@ -258,7 +262,13 @@ export async function POST(req: Request) {
 
   let analysis;
   try {
-    if (suspicious) {
+    if (isMessaging) {
+      analysis = await analyzeMessagingTranscript(
+        transcriptForAnalysis,
+        persistedTranscript,
+        String(body.employee_name ?? "").trim() || undefined
+      );
+    } else if (suspicious) {
       analysis = unclearAnalysis();
     } else {
       analysis = await analyzeTranscript(transcriptForAnalysis);
@@ -276,8 +286,12 @@ export async function POST(req: Request) {
     analysis = { ...analysis, employeeName: employeeOverride };
   }
 
-  // AI null qaytarsa — matndan mexanika/avtomat ni qo‘shimcha qidiramiz (unclear emas)
-  if (analysis.outcome !== "unclear" && !analysis.carTransmission) {
+  // AI null qaytarsa — matndan mexanika/avtomat ni qo‘shimcha qidiramiz (messaging/audio unclear emas)
+  if (
+    !isMessaging &&
+    analysis.outcome !== "unclear" &&
+    !analysis.carTransmission
+  ) {
     analysis = {
       ...analysis,
       carTransmission: inferTransmissionFromText(transcriptForAnalysis),

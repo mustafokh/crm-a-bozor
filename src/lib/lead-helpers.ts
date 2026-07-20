@@ -1,3 +1,5 @@
+import { UNCLEAR_SUMMARY } from "@/lib/calls/suspicious-transcript";
+
 /** Mashina va gaplashuv maydonlarini birlashtirish */
 
 export interface CarTalkFields {
@@ -74,4 +76,31 @@ export function hasTalkContent(fields: ReturnType<typeof extractTalkFields>, tal
       fields.clientWants ||
       fields.outcome
   );
+}
+
+/** WhatsApp/Telegram avtomatik sync dan yaratilgan takroriy gaplashuv yozuvlarini yashirish. */
+export function filterManualConversations<
+  T extends {
+    discussionNotes?: string | null;
+    outcome?: string | null;
+    carMake?: string | null;
+    carModel?: string | null;
+    carInterest?: string | null;
+  },
+>(conversations: T[] | null | undefined): T[] {
+  if (!conversations?.length) return [];
+  return conversations.filter((c) => {
+    const notes = c.discussionNotes?.trim() ?? "";
+    if (notes === UNCLEAR_SUMMARY) return false;
+    if (
+      /^(Mijoz|Xodim)\s*:/i.test(notes) &&
+      !c.carMake &&
+      !c.carModel &&
+      !c.carInterest &&
+      c.outcome === "UNCLEAR"
+    ) {
+      return false;
+    }
+    return true;
+  });
 }

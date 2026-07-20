@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { buildCarInterest } from "@/lib/lead-helpers";
+import { extractMessageText } from "@/lib/calls/analyze-messaging";
 import type { CallAnalysis } from "./analyze-transcript";
 
 const CHANNEL_TO_LEAD: Record<string, string> = {
@@ -27,9 +28,16 @@ export async function syncCallToLead(params: {
   callId: string;
 }) {
   const leadSource = CHANNEL_TO_LEAD[params.channelSource] ?? "CALL";
+  const isMessaging =
+    params.channelSource === "whatsapp" || params.channelSource === "telegram";
   const outcome = params.analysis.outcome
     ? OUTCOME_TO_LEAD[params.analysis.outcome] ?? null
     : null;
+  const discussionNotes = isMessaging
+    ? extractMessageText(params.rawTranscript) ||
+      params.analysis.summary ||
+      params.rawTranscript.slice(0, 2000)
+    : params.analysis.summary ?? params.rawTranscript.slice(0, 2000);
 
   let assignedToId: string | null = null;
   if (params.analysis.employeeName) {
@@ -45,9 +53,7 @@ export async function syncCallToLead(params: {
 
   const talkFields = {
     talkedAt: params.callDate,
-    discussionNotes:
-      params.analysis.summary ??
-      params.rawTranscript.slice(0, 2000),
+    discussionNotes,
     carMake: params.analysis.carBrand,
     carModel: params.analysis.carModel,
     carColor: params.analysis.carColor,
@@ -111,7 +117,8 @@ export async function syncCallToLead(params: {
   }
 
   const conversationUserId = assignedToId ?? lead.assignedToId;
-  if (conversationUserId) {
+  // WhatsApp/Telegram xabarlari alohida messages bo'limida — takroriy gaplashuv yaratmaymiz
+  if (conversationUserId && !isMessaging) {
     await prisma.leadConversation.create({
       data: {
         leadId: lead.id,
