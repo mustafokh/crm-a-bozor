@@ -6,8 +6,10 @@ import { useI18n } from "@/components/language-provider";
 import {
   displayInteractionSummary,
   isMessagingSource,
+  messagingDisplayText,
   shouldShowCallOutcome,
   shouldShowCarDetails,
+  withEffectiveSource,
 } from "@/lib/calls/call-history-helpers";
 import {
   resolveCallAudioUrl,
@@ -124,6 +126,10 @@ export function MessageTranscriptBlock({ call }: { call?: LatestCallInfo | null 
 
 export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
   const { t } = useI18n();
+  const normalized = withEffectiveSource(call);
+  if (isMessagingSource(normalized.source)) {
+    return <MessageHistoryCard call={normalized} />;
+  }
   const [open, setOpen] = useState(false);
   const sourceLabel =
     (call.source && CALL_SOURCE_TYPE[call.source]) || call.source || "—";
@@ -192,35 +198,37 @@ export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
 
 export function MessageHistoryCard({ call }: { call: CallHistoryItem }) {
   const { t } = useI18n();
+  const normalized = withEffectiveSource(call);
   const sourceLabel =
-    (call.source && CALL_SOURCE_TYPE[call.source]) || call.source || "—";
-  const text = call.formattedTranscript?.trim() || call.rawTranscript?.trim();
-  const summary = displayInteractionSummary(call);
-  const showCarDetails = shouldShowCarDetails(call);
+    (normalized.source && CALL_SOURCE_TYPE[normalized.source]) ||
+    normalized.source ||
+    "—";
+  const text = messagingDisplayText(normalized);
+  const showCarDetails = shouldShowCarDetails(normalized);
 
   return (
     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span className="font-medium text-foreground">
-          {call.callDate ? formatDateTime(call.callDate) : "—"}
+          {normalized.callDate ? formatDateTime(normalized.callDate) : "—"}
         </span>
         <Badge className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-normal">
           {sourceLabel}
         </Badge>
-        <DirectionBadge direction={call.direction} />
-        {call.employeeName && (
-          <span className="text-foreground/80">{call.employeeName}</span>
+        <DirectionBadge direction={normalized.direction} />
+        {normalized.employeeName && (
+          <span className="text-foreground/80">{normalized.employeeName}</span>
         )}
       </div>
       {text ? (
         <TranscriptBubbles text={text} className="max-h-48" />
       ) : (
-        <p className="text-sm leading-snug text-foreground/90">{summary}</p>
+        <p className="text-sm leading-snug text-foreground/90">—</p>
       )}
       {showCarDetails && (
         <p className="mt-2 text-xs text-muted-foreground">
           {t("leads.col.carInterest")}:{" "}
-          {[call.carModel, call.carColor].filter(Boolean).join(" · ")}
+          {[normalized.carModel, normalized.carColor].filter(Boolean).join(" · ")}
         </p>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import { parseDirectionFromFileName, type CallDirection } from "@/lib/calls/call-direction";
 import { normalizeTransmission } from "@/lib/calls/analyze-transcript";
+import { resolveEffectiveSource } from "@/lib/calls/call-source";
 
 export interface LatestCallInfo {
   id: string;
@@ -40,6 +41,7 @@ const CALL_SELECT = {
   carModel: true,
   carColor: true,
   employeeName: true,
+  leadSource: true,
 } as const;
 
 /** Oxirgi N ta Call (tarix + latestCall = calls[0]). */
@@ -132,6 +134,7 @@ type CallRow = {
   carModel?: string | null;
   carColor?: string | null;
   employeeName?: string | null;
+  leadSource?: string | null;
 };
 
 export function normalizeCallItem(c: CallRow): CallHistoryItem {
@@ -149,7 +152,16 @@ export function normalizeCallItem(c: CallRow): CallHistoryItem {
 
   return {
     id: c.id,
-    source: c.source ?? null,
+    source: resolveEffectiveSource({
+      source: c.source,
+      fileName: c.fileName,
+      rawTranscript: c.rawTranscript,
+      formattedTranscript: c.formattedTranscript,
+      audioUrl: c.audioUrl,
+      leadSource: c.leadSource,
+      summary: c.summary,
+      outcome: c.outcome,
+    }),
     audioUrl: c.audioUrl ?? null,
     fileName: c.fileName ?? null,
     direction,
@@ -184,7 +196,7 @@ export function withLatestCall<T extends { calls?: CallRow[] | null }>(
   const { calls: rawCalls, ...rest } = lead;
   const calls = (rawCalls ?? []).map(normalizeCallItem);
   const latestPhoneCall =
-    calls.find((c) => c.source === "call" || !c.source) ?? null;
+    calls.find((c) => c.source === "call") ?? null;
   return {
     ...rest,
     calls,

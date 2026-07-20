@@ -294,6 +294,7 @@ export const uz: TranslationDict = {
   "leads.callHistory": "Qo'ng'iroqlar tarixi",
   "leads.noCallHistory": "Hali qo'ng'iroq yo'q",
   "leads.messageHistory": "WhatsApp yozishmalar",
+  "leads.messages": "Xabarlar",
   "leads.noMessageHistory": "Hali xabar yo'q",
   "leads.talkSaved": "Gaplashuv saqlandi",
   "leads.carInterestHint": "Masalan: Toyota Camry 2022",

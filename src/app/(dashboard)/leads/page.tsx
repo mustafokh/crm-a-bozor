@@ -716,31 +716,27 @@ function LeadsPageContent() {
 
             <CallTranscriptBlock call={profileLatestPhoneCall} />
 
+            {profileMessages.length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.messageHistory")}</h4>
-              {profileMessages.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("leads.noMessageHistory")}</p>
-              ) : (
-                <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
-                  {profileMessages.map((c) => (
-                    <MessageHistoryCard key={c.id} call={c} />
-                  ))}
-                </div>
-              )}
+              <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                {profileMessages.map((c) => (
+                  <MessageHistoryCard key={c.id} call={c} />
+                ))}
+              </div>
             </div>
+            )}
 
+            {profilePhoneCalls.length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.callHistory")}</h4>
-              {profilePhoneCalls.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("leads.noCallHistory")}</p>
-              ) : (
-                <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
-                  {profilePhoneCalls.map((c) => (
-                    <CallHistoryCard key={c.id} call={c} />
-                  ))}
-                </div>
-              )}
+              <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                {profilePhoneCalls.map((c) => (
+                  <CallHistoryCard key={c.id} call={c} />
+                ))}
+              </div>
             </div>
+            )}
 
             {profileManualTalks.length > 0 && (
             <div>
