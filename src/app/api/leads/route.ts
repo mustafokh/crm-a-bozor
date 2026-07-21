@@ -40,26 +40,53 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const showFiltered = searchParams.get("filtered") === "1";
 
-  const leads = await prisma.lead.findMany({
-    where: visibleLeadWhere(auth, showFiltered),
-    orderBy: [{ talkedAt: "desc" }, { createdAt: "desc" }],
-    include: {
-      assignedTo: { select: { id: true, name: true } },
-      conversations: {
-        orderBy: { talkedAt: "desc" },
-        take: 10,
-        include: { user: { select: { id: true, name: true } } },
+  let leads;
+  try {
+    leads = await prisma.lead.findMany({
+      where: visibleLeadWhere(auth, showFiltered),
+      orderBy: [{ talkedAt: "desc" }, { createdAt: "desc" }],
+      include: {
+        assignedTo: { select: { id: true, name: true } },
+        conversations: {
+          orderBy: { talkedAt: "desc" },
+          take: 10,
+          include: { user: { select: { id: true, name: true } } },
+        },
+        calls: CALLS_HISTORY_INCLUDE,
+        interactions: INTERACTIONS_INCLUDE,
+        _count: { select: { conversations: true } },
       },
-      calls: CALLS_HISTORY_INCLUDE,
-      interactions: INTERACTIONS_INCLUDE,
-      _count: { select: { conversations: true } },
-    },
-  });
+    });
+  } catch (e) {
+    console.error("GET /api/leads with interactions failed:", e);
+    leads = await prisma.lead.findMany({
+      where: visibleLeadWhere(auth, showFiltered),
+      orderBy: [{ talkedAt: "desc" }, { createdAt: "desc" }],
+      include: {
+        assignedTo: { select: { id: true, name: true } },
+        conversations: {
+          orderBy: { talkedAt: "desc" },
+          take: 10,
+          include: { user: { select: { id: true, name: true } } },
+        },
+        calls: CALLS_HISTORY_INCLUDE,
+        _count: { select: { conversations: true } },
+      },
+    });
+  }
+
   return NextResponse.json({
     leads: leads.map((l) => {
       const withCalls = withLatestCall(l);
-      const interactions = (l.interactions ?? []).map(normalizeInteraction);
-      return { ...withCalls, interactions };
+      const rawInteractions = "interactions" in l ? (l as { interactions?: Parameters<typeof normalizeInteraction>[0][] }).interactions : undefined;
+      if (!rawInteractions?.length) return withCalls;
+      try {
+        const interactions = rawInteractions.map(normalizeInteraction);
+        return { ...withCalls, interactions };
+      } catch (e) {
+        console.error("lead map error:", e);
+        return withCalls;
+      }
     }),
   });
 }

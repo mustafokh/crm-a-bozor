@@ -82,7 +82,14 @@ function parseAudioUrl(raw: unknown): { value: string | null; error?: string } {
 
 function isMissingColumnError(message: string, column: string): boolean {
   const m = message.toLowerCase();
-  return m.includes(column.toLowerCase()) && (m.includes("does not exist") || m.includes("unknown column"));
+  const col = column.toLowerCase();
+  if (m.includes(col) && (m.includes("does not exist") || m.includes("unknown column"))) {
+    return true;
+  }
+  // Prisma client eski bo'lsa — maydon schema'da yo'q
+  if (m.includes("unknown arg") && m.includes(col)) return true;
+  if (m.includes("invalid") && m.includes("invocation") && m.includes(col)) return true;
+  return false;
 }
 
 function clipTranscript(text: string): string {
@@ -212,6 +219,9 @@ export async function POST(req: Request) {
     source: sourceRaw,
     callDate: callDate!,
     newMessage: labeledPreview,
+  }).catch((e) => {
+    console.error("resolveInteraction failed:", e instanceof Error ? e.message : e);
+    return null;
   });
   if (interactionResolution) {
     interactionId = interactionResolution.interactionId;
