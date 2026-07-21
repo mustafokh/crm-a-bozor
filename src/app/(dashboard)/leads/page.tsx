@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { PublicLinksCard } from "@/components/public/public-links-card";
 import { TalkFields, emptyTalkForm, talkFormFromRecord } from "@/components/leads/talk-fields";
 import { TalkRecordCard, type TalkRecord } from "@/components/leads/talk-record-card";
+import { HistoryByDayAccordion } from "@/components/leads/history-by-day-accordion";
 import {
   CallHistoryCard,
   CallTranscriptBlock,
@@ -719,33 +720,40 @@ function LeadsPageContent() {
             {profileMessages.length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.messageHistory")}</h4>
-              <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
-                {profileMessages.map((c) => (
-                  <MessageHistoryCard key={c.id} call={c} />
-                ))}
-              </div>
+              <HistoryByDayAccordion
+                items={profileMessages}
+                getDate={(c) => c.callDate}
+                getKey={(c) => c.id}
+                countLabelKey="leads.historyDayCount"
+                renderItem={(c) => <MessageHistoryCard call={c} />}
+              />
             </div>
             )}
 
             {profilePhoneCalls.length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.callHistory")}</h4>
-              <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
-                {profilePhoneCalls.map((c) => (
-                  <CallHistoryCard key={c.id} call={c} />
-                ))}
-              </div>
+              <HistoryByDayAccordion
+                items={profilePhoneCalls}
+                getDate={(c) => c.callDate}
+                getKey={(c) => c.id}
+                countLabelKey="leads.historyDayCount"
+                renderItem={(c) => <CallHistoryCard call={c} />}
+              />
             </div>
             )}
 
             {profileManualTalks.length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.history")}</h4>
-              <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                {profileManualTalks.map((c) => (
-                  <TalkRecordCard key={c.id} record={c} compact />
-                ))}
-              </div>
+              <HistoryByDayAccordion
+                items={profileManualTalks}
+                getDate={(c) => c.talkedAt}
+                getKey={(c) => c.id ?? `${c.talkedAt}-${c.discussionNotes?.slice(0, 20)}`}
+                countLabelKey="leads.historyDayTalkCount"
+                maxHeight="max-h-[320px]"
+                renderItem={(c) => <TalkRecordCard record={c} compact />}
+              />
             </div>
             )}
           </div>
