@@ -15,8 +15,8 @@ import {
 import { inferTransmissionFromText } from "@/lib/calls/latest-call";
 import {
   appendTranscriptLine,
+  buildThreadFromCallRecords,
   labelMessage,
-  mergeThreadTranscripts,
   resolveMessageDirection,
 } from "@/lib/calls/messaging-thread";
 import {
@@ -223,10 +223,7 @@ export async function POST(req: Request) {
     }
 
     if (previous.length > 0) {
-      const historyParts = previous.map(
-        (t) => t.formattedTranscript?.trim() || t.rawTranscript
-      );
-      const history = mergeThreadTranscripts(historyParts);
+      const history = buildThreadFromCallRecords(previous);
       transcriptForAnalysis = appendTranscriptLine(history, labeledLine);
     } else {
       transcriptForAnalysis = labeledLine;
@@ -286,12 +283,8 @@ export async function POST(req: Request) {
     analysis = { ...analysis, employeeName: employeeOverride };
   }
 
-  // AI null qaytarsa — matndan mexanika/avtomat ni qo‘shimcha qidiramiz (messaging/audio unclear emas)
-  if (
-    !isMessaging &&
-    analysis.outcome !== "unclear" &&
-    !analysis.carTransmission
-  ) {
+  // AI null qaytarsa — matndan mexanika/avtomat ni qo‘shimcha qidiramiz (audio unclear emas)
+  if (analysis.outcome !== "unclear" && !analysis.carTransmission) {
     analysis = {
       ...analysis,
       carTransmission: inferTransmissionFromText(transcriptForAnalysis),

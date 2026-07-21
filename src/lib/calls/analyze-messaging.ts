@@ -1,28 +1,31 @@
-import type { CallAnalysis } from "./analyze-transcript";
+import { normalizeTransmission, type CallAnalysis } from "./analyze-transcript";
+import { countLabeledLines } from "./messaging-thread";
 import { UNCLEAR_SUMMARY } from "./suspicious-transcript";
 
 const MESSAGING_SYSTEM_PROMPT = `Sen avtosalon uchun WhatsApp/Telegram yozishmalarini tahlil qiluvchi yordamchisan.
 Bu matn AUDIO transkripsiya EMAS — haqiqiy chat xabarlari. "Audio sifati past" deb HECH QACHON yozma.
 
-Matn "Mijoz: ..." va "Xodim: ..." qatorlari bilan beriladi. BUTUN suhbat tarixini hisobga ol.
+Matn "Mijoz: ..." va "Xodim: ..." qatorlari bilan beriladi. BUTUN suhbat tarixini hisobga ol — ma'lumotlar turli xabarlarda bo'lishi mumkin (masalan, model birinchi xabarda, rang va byudjet keyinroq, ism alohida xabarda).
 
-Agar xabar qisqa salom yoki oddiy savol bo'lsa ham, summary da xabar mazmunini qisqacha yoz — unclear qilma.
+Oxirgi xabar qisqa bo'lsa ham (masalan "juda qimmat"), avvalgi xabarlardan model, rang, byudjet, ism va uzatma turini chiqar.
+
+Agar xabar qisqa salom yoki oddiy savol bo'lsa ham, summary da BUTUN suhbat kontekstini qisqacha yoz — unclear qilma.
 
 JSON struktura (faqat JSON qaytar):
 {
   "employee_name": "xodim ismi yoki null",
-  "customer_name": "mijoz ismi yoki null",
+  "customer_name": "mijozning ismi (suhbatda aytilgan bo'lsa)",
   "customer_intent": "buy | inquiry | complaint | other | null",
-  "car_model": "model yoki null",
-  "car_color": "rang yoki null",
-  "car_brand": "brend yoki null",
+  "car_model": "qiziqqan avtomobil modeli",
+  "car_color": "qiziqqan rang",
+  "car_brand": "brend nomi",
   "car_transmission": "mexanika | avtomat | null",
-  "budget": "byudjet matn yoki null",
+  "budget": "mijoz aytgan byudjet/narx (matn, masalan '184000$')",
   "outcome": "purchased | not_purchased | pending | callback_needed | null",
   "reason_purchased": null,
-  "reason_not_purchased": null,
-  "lead_source": "whatsapp | other | null",
-  "summary": "oxirgi xabar va suhbat kontekstiga asoslangan 1-2 gapli xulosa",
+  "reason_not_purchased": "narx yuqori, o'ylab ko'rish va h.k.",
+  "lead_source": "whatsapp | telegram | other | null",
+  "summary": "BUTUN suhbatning 2-3 gapli qisqa xulosasi (faqat oxirgi xabar emas)",
   "sentiment": "positive | neutral | negative | null",
   "follow_up_needed": true/false,
   "follow_up_note": "null yoki qayta bog'lanish sababi"
@@ -76,7 +79,7 @@ function parseMessagingPayload(raw: unknown): CallAnalysis {
     carModel: asNullableString(data.car_model),
     carColor: asNullableString(data.car_color),
     carBrand: asNullableString(data.car_brand),
-    carTransmission: asNullableString(data.car_transmission),
+    carTransmission: normalizeTransmission(data.car_transmission),
     budget: asNullableString(data.budget),
     outcome: asNullableString(data.outcome),
     reasonPurchased: asNullableString(data.reason_purchased),
@@ -123,16 +126,28 @@ export function sanitizeMessagingAnalysis(
   return analysis;
 }
 
+/** Birinchi xabar / qisqa salom uchun AI chaqirmasdan tahlil yetarli. */
+export function shouldUseLightMessagingAnalysis(
+  threadText: string,
+  latestLabeledLine: string
+): boolean {
+  const labeledLines = countLabeledLines(threadText);
+  if (labeledLines > 1) return false;
+
+  const threadWordCount = threadText.split(/\s+/).filter(Boolean).length;
+  const latestText = extractMessageText(latestLabeledLine);
+  const latestWordCount = latestText.split(/\s+/).filter(Boolean).length;
+
+  return labeledLines <= 1 && latestWordCount <= 15 && threadWordCount <= 15;
+}
+
 /** WhatsApp/Telegram thread uchun yengil AI tahlil (audio hallucination yo'q). */
 export async function analyzeMessagingTranscript(
   threadText: string,
   latestLabeledLine: string,
   employeeName?: string | null
 ): Promise<CallAnalysis> {
-  const latestText = extractMessageText(latestLabeledLine);
-  const wordCount = latestText.split(/\s+/).filter(Boolean).length;
-
-  if (wordCount <= 15) {
+  if (shouldUseLightMessagingAnalysis(threadText, latestLabeledLine)) {
     const light = buildLightMessagingAnalysis(latestLabeledLine, employeeName);
     return sanitizeMessagingAnalysis(light, latestLabeledLine);
   }

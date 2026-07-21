@@ -86,3 +86,19 @@ function normalizeLegacyTranscript(part: string): string {
     .filter(Boolean)
     .join("\n");
 }
+
+export type ThreadCallRecord = {
+  rawTranscript: string;
+  formattedTranscript?: string | null;
+};
+
+/** Call yozuvlaridan xronologik suhbat matnini yig'adi. */
+export function buildThreadFromCallRecords(records: ThreadCallRecord[]): string {
+  const parts = records.map((t) => t.formattedTranscript?.trim() || t.rawTranscript);
+  return mergeThreadTranscripts(parts);
+}
+
+/** Yorliqlangan suhbat qatorlari soni. */
+export function countLabeledLines(text: string): number {
+  return text.split(/\r?\n/).filter((line) => /^(Mijoz|Xodim)\s*:/i.test(line.trim())).length;
+}

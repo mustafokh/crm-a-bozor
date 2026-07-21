@@ -34,8 +34,8 @@ export async function syncCallToLead(params: {
     ? OUTCOME_TO_LEAD[params.analysis.outcome] ?? null
     : null;
   const discussionNotes = isMessaging
-    ? extractMessageText(params.rawTranscript) ||
-      params.analysis.summary ||
+    ? params.analysis.summary?.trim() ||
+      extractMessageText(params.rawTranscript) ||
       params.rawTranscript.slice(0, 2000)
     : params.analysis.summary ?? params.rawTranscript.slice(0, 2000);
 
