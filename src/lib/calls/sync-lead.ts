@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { buildCarInterest } from "@/lib/lead-helpers";
+import { buildCarInterest, normalizeLeadOutcome, stripMakeFromModel } from "@/lib/lead-helpers";
 import { extractMessageText } from "@/lib/calls/analyze-messaging";
 import type { CallAnalysis } from "./analyze-transcript";
 
@@ -32,7 +32,7 @@ export async function syncCallToLead(params: {
   const isMessaging =
     params.channelSource === "whatsapp" || params.channelSource === "telegram";
   const outcome = params.analysis.outcome
-    ? OUTCOME_TO_LEAD[params.analysis.outcome] ?? null
+    ? normalizeLeadOutcome(OUTCOME_TO_LEAD[params.analysis.outcome] ?? params.analysis.outcome)
     : null;
   const discussionNotes = isMessaging
     ? params.analysis.summary?.trim() ||
@@ -52,17 +52,21 @@ export async function syncCallToLead(params: {
     assignedToId = user?.id ?? null;
   }
 
+  const carMake = params.analysis.carBrand?.trim() || null;
+  const carModelRaw = params.analysis.carModel?.trim() || null;
+  const carModel = carModelRaw ? stripMakeFromModel(carMake, carModelRaw) || null : null;
+
   const talkFields = {
     talkedAt: params.callDate,
     discussionNotes,
-    carMake: params.analysis.carBrand,
-    carModel: params.analysis.carModel,
+    carMake,
+    carModel,
     carColor: params.analysis.carColor,
     budget: params.analysis.budget,
     outcome,
     carInterest: buildCarInterest({
-      carMake: params.analysis.carBrand,
-      carModel: params.analysis.carModel,
+      carMake,
+      carModel,
       carColor: params.analysis.carColor,
     }),
     clientWants: params.analysis.followUpNote,

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
+import { leadOutcomeLabel } from "@/lib/lead-helpers";
 import type { LucideIcon } from "lucide-react";
 
 export interface HomeStats {
@@ -137,7 +138,7 @@ export function HomeFeatureGrid({
       stat: stats.active,
       statLabelKey: "home.features.stats.stat",
       preview: stats.byOutcome.slice(0, 3).map((o) => ({
-        label: t(`enum.leadOutcome.${o.outcome}`) || o.outcome,
+        label: leadOutcomeLabel(t, o.outcome),
         value: o.count,
         href: `/leads?outcome=${encodeURIComponent(o.outcome)}`,
       })),

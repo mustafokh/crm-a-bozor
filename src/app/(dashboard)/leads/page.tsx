@@ -42,7 +42,7 @@ import {
   CHANNEL_SOURCES, CHANNEL_COLOR,
 } from "@/lib/constants";
 import { detectCountryFromPhone } from "@/lib/country-display";
-import { formatCarShort } from "@/lib/lead-helpers";
+import { formatCarShort, leadOutcomeLabel, normalizeLeadOutcome } from "@/lib/lead-helpers";
 import { formatDateTime, cn } from "@/lib/utils";
 import { validateLead, hasErrors, type Errors } from "@/lib/validation";
 
@@ -329,8 +329,7 @@ function LeadsPageContent() {
   }
 
   function outcomeLabel(key?: string | null) {
-    if (!key) return "—";
-    return t(`enum.leadOutcome.${key}`) || key;
+    return leadOutcomeLabel(t, key);
   }
 
   function truncate(text?: string | null, len = 36) {
@@ -513,7 +512,7 @@ function LeadsPageContent() {
                     <TD className="max-w-[140px] text-sm text-muted-foreground">{truncate(lead.discussionNotes)}</TD>
                     <TD>
                       {lead.outcome ? (
-                        <Badge className={cn("font-normal", LEAD_OUTCOME_COLOR[lead.outcome])}>
+                        <Badge className={cn("font-normal", LEAD_OUTCOME_COLOR[normalizeLeadOutcome(lead.outcome) ?? ""])}>
                           {outcomeLabel(lead.outcome)}
                         </Badge>
                       ) : "—"}
@@ -690,7 +689,7 @@ function LeadsPageContent() {
                       </Badge>
                     )}
                     {activeLead.outcome && (
-                      <Badge className={cn("font-normal", LEAD_OUTCOME_COLOR[activeLead.outcome])}>
+                      <Badge className={cn("font-normal", LEAD_OUTCOME_COLOR[normalizeLeadOutcome(activeLead.outcome) ?? ""])}>
                         {outcomeLabel(activeLead.outcome)}
                       </Badge>
                     )}

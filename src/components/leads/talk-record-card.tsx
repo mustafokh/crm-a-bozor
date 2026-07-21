@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CarColorBadge } from "@/components/ui/car-color-badge";
 import { useI18n } from "@/components/language-provider";
 import { LEAD_OUTCOME_COLOR, PAYMENT_TYPE } from "@/lib/constants";
-import { formatCarShort } from "@/lib/lead-helpers";
+import { formatCarShort, leadOutcomeLabel, normalizeLeadOutcome } from "@/lib/lead-helpers";
 import { formatDateTime, cn } from "@/lib/utils";
 
 export interface TalkRecord {
@@ -35,9 +35,8 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 
 export function TalkRecordCard({ record, compact }: { record: TalkRecord; compact?: boolean }) {
   const { t } = useI18n();
-  const outcomeLabel = record.outcome
-    ? t(`enum.leadOutcome.${record.outcome}`) || record.outcome
-    : null;
+  const outcomeLabel = record.outcome ? leadOutcomeLabel(t, record.outcome) : null;
+  const outcomeKey = normalizeLeadOutcome(record.outcome);
 
   return (
     <div className={cn("rounded-xl border border-border bg-muted/20 p-4", compact && "p-3")}>
@@ -49,7 +48,7 @@ export function TalkRecordCard({ record, compact }: { record: TalkRecord; compac
           <span className="text-xs text-muted-foreground">{formatDateTime(record.talkedAt)}</span>
         )}
         {record.outcome && (
-          <Badge className={cn("font-normal text-xs", LEAD_OUTCOME_COLOR[record.outcome])}>
+          <Badge className={cn("font-normal text-xs", LEAD_OUTCOME_COLOR[outcomeKey ?? ""])}>
             {outcomeLabel}
           </Badge>
         )}

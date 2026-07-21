@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { CarColorBadge } from "@/components/ui/car-color-badge";
 import { CountryBadge } from "@/components/ui/country-badge";
 import { LEAD_OUTCOME_COLOR } from "@/lib/constants";
-import { formatCarShort } from "@/lib/lead-helpers";
+import { formatCarShort, leadOutcomeLabel, normalizeLeadOutcome } from "@/lib/lead-helpers";
 import { formatDateTime, cn } from "@/lib/utils";
 import type { HomeStats } from "./home-feature-grid";
 
@@ -38,8 +38,8 @@ export function HomeRecentLeads({ leads }: { leads: HomeStats["recentLeads"] }) 
               <span className="font-semibold">{lead.fullName}</span>
               <CountryBadge country={lead.country} phone={lead.phone} />
               {lead.outcome && (
-                <Badge className={cn("text-xs font-normal", LEAD_OUTCOME_COLOR[lead.outcome])}>
-                  {t(`enum.leadOutcome.${lead.outcome}`) || lead.outcome}
+                <Badge className={cn("text-xs font-normal", LEAD_OUTCOME_COLOR[normalizeLeadOutcome(lead.outcome) ?? ""])}>
+                  {leadOutcomeLabel(t, lead.outcome)}
                 </Badge>
               )}
             </div>

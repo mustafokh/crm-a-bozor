@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
+import { leadOutcomeLabel } from "@/lib/lead-helpers";
 import { LEAD_SOURCE } from "@/lib/constants";
 import { CountUp } from "@/components/count-up";
 import { DualLine, BarsChart, DonutChart } from "@/components/charts";
@@ -429,7 +430,7 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
                 href={filterHref({ outcome: o.outcome })}
                 className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-sm transition hover:border-primary/40 hover:bg-primary/5"
               >
-                <span>{t(`enum.leadOutcome.${o.outcome}`) || o.outcome}</span>
+                <span>{leadOutcomeLabel(t, o.outcome)}</span>
                 <span className="font-bold tabular-nums">{o.count}</span>
               </Link>
             ))}
