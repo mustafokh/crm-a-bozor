@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { CHANNEL_SOURCES } from "@/lib/constants";
 import { resolveCountry } from "@/lib/country-display";
+import { stripMakeFromModel } from "@/lib/lead-helpers";
 
 function leadWhere(userId?: string, role?: string) {
   return role === "MANAGER"
@@ -15,7 +16,9 @@ function todayStart() {
 }
 
 function carLabel(make: string | null, model: string | null) {
-  const parts = [make, model].filter(Boolean).join(" ").trim();
+  const mk = make?.trim() ?? "";
+  const m = stripMakeFromModel(mk, model);
+  const parts = [mk, m].filter(Boolean).join(" ").trim();
   return parts || "—";
 }
 
