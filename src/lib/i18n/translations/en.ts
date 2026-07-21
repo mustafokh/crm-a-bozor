@@ -284,6 +284,8 @@ export const en: TranslationDict = {
   "leads.callHistory": "Call history",
   "leads.noCallHistory": "No phone calls yet",
   "leads.messageHistory": "WhatsApp messages",
+  "leads.interactionHistory": "Interaction history",
+  "leads.interactionClosed": "Closed",
   "leads.messages": "Messages",
   "leads.noMessageHistory": "No messages yet",
   "leads.talkSaved": "Conversation saved",

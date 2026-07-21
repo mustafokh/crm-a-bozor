@@ -191,6 +191,7 @@ model Lead {
   customer      Customer?          @relation(fields: [customerId], references: [id])
   conversations LeadConversation[]
   calls         Call[]
+  interactions  Interaction[]
 
   @@index([status])
   @@index([assignedToId])
@@ -245,6 +246,8 @@ model Call {
 
   leadId    String? @map("lead_id")
   lead      Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  interactionId String? @map("interaction_id")
+  interaction   Interaction? @relation(fields: [interactionId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -258,7 +261,43 @@ model Call {
   @@index([direction])
   @@index([leadId])
   @@index([filteredOut])
+  @@index([interactionId])
   @@map("calls")
+}
+
+/** Har bir alohida murojaat/suhbat davri (thread) */
+model Interaction {
+  id              String    @id @default(cuid())
+  leadId          String    @map("lead_id")
+  source          String    @default("whatsapp") // call | whatsapp | telegram
+  status          String    @default("active") // active | closed
+  startedAt       DateTime  @map("started_at")
+  lastMessageAt   DateTime  @map("last_message_at")
+  closedAt        DateTime? @map("closed_at")
+
+  topic           String?
+  carMake         String?   @map("car_make")
+  carModel        String?   @map("car_model")
+  carColor        String?   @map("car_color")
+  carInterest     String?   @map("car_interest")
+  carTransmission String?   @map("car_transmission")
+  budget          String?
+  outcome         String?
+  summary         String?   @db.Text
+  customerName    String?   @map("customer_name")
+  employeeName    String?   @map("employee_name")
+
+  lead  Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  calls Call[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([leadId])
+  @@index([lastMessageAt])
+  @@index([status])
+  @@index([source])
+  @@map("interactions")
 }
 
 // Har bir gaplashuv/qo'ng'iroq tarixi

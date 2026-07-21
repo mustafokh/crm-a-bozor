@@ -10,7 +10,9 @@ import { PageHeader } from "@/components/page-header";
 import { PublicLinksCard } from "@/components/public/public-links-card";
 import { TalkFields, emptyTalkForm, talkFormFromRecord } from "@/components/leads/talk-fields";
 import { TalkRecordCard, type TalkRecord } from "@/components/leads/talk-record-card";
+import { InteractionThreadCard } from "@/components/leads/interaction-thread-card";
 import { HistoryByDayAccordion } from "@/components/leads/history-by-day-accordion";
+import type { InteractionInfo } from "@/lib/calls/interaction-helpers";
 import {
   CallHistoryCard,
   CallTranscriptBlock,
@@ -61,6 +63,7 @@ interface Lead extends TalkRecord {
   latestCall?: LatestCallInfo | null;
   latestPhoneCall?: LatestCallInfo | null;
   calls?: CallHistoryItem[];
+  interactions?: InteractionInfo[];
   isFiltered?: boolean;
   manuallyPromoted?: boolean;
 }
@@ -201,6 +204,10 @@ function LeadsPageContent() {
     });
   }, [leads, search, filterSource, filterEmployee, filterCountry, filterColor, filterOutcome, filterCar, filterToday, filterUnassigned]);
 
+  const profileInteractions = useMemo(
+    () => activeLead?.interactions ?? [],
+    [activeLead?.interactions]
+  );
   const profilePhoneCalls = useMemo(
     () => partitionCallHistory(activeLead?.calls ?? []).phoneCalls,
     [activeLead?.calls]
@@ -784,6 +791,21 @@ function LeadsPageContent() {
 
             <CallTranscriptBlock call={profileLatestPhoneCall} />
 
+            {profileInteractions.length > 0 ? (
+              <div>
+                <h4 className="mb-3 text-sm font-semibold">{t("leads.interactionHistory")}</h4>
+                <div className="space-y-3">
+                  {profileInteractions.map((ix, idx) => (
+                    <InteractionThreadCard
+                      key={ix.id}
+                      interaction={ix}
+                      defaultOpen={idx === 0}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
             {profileMessages.length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-semibold">{t("leads.messageHistory")}</h4>
@@ -808,6 +830,8 @@ function LeadsPageContent() {
                 renderItem={(c) => <CallHistoryCard call={c} />}
               />
             </div>
+            )}
+              </>
             )}
 
             {profileManualTalks.length > 0 && (

@@ -21,6 +21,11 @@ import {
   resolveMessageDirection,
 } from "@/lib/calls/messaging-thread";
 import {
+  getInteractionCallRecords,
+  resolveInteraction,
+} from "@/lib/calls/resolve-interaction";
+import { syncInteractionFromAnalysis } from "@/lib/calls/sync-interaction";
+import {
   enforceUnclearIfNeeded,
   isSuspiciousTranscript,
   unclearAnalysis,
@@ -184,42 +189,60 @@ export async function POST(req: Request) {
     }
   }
 
+  // Interaction (thread) aniqlash — mavjud lead bo'lsa
+  const existingLead = await prisma.lead.findFirst({
+    where: { phone },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true },
+  });
+
+  let interactionId: string | null = null;
+  let interactionIsNew = false;
+
+  const msgDir = THREAD_SOURCES.has(sourceRaw)
+    ? resolveMessageDirection(body)
+    : null;
+  const labeledPreview = THREAD_SOURCES.has(sourceRaw)
+    ? labelMessage(rawTranscript, msgDir ?? "inbound")
+    : rawTranscript;
+
+  const interactionResolution = await resolveInteraction({
+    leadId: existingLead?.id ?? null,
+    phone,
+    source: sourceRaw,
+    callDate: callDate!,
+    newMessage: labeledPreview,
+  });
+  if (interactionResolution) {
+    interactionId = interactionResolution.interactionId;
+    interactionIsNew = interactionResolution.isNew;
+  }
+
   // Persist qilinadigan matn: messaging uchun yorliqli yangi xabar; call uchun asl transcript
   // rawTranscript hech qachon formatlangan matn bilan yozilmaydi
   let persistedTranscript = rawTranscript;
-  // AI ga yuboriladigan matn (WhatsApp/Telegram'da oldingi call'lar konteksti bilan)
+  // AI ga yuboriladigan matn (faqat joriy interaction ichidagi call'lar)
   let transcriptForAnalysis = rawTranscript;
   let formattedTranscript: string | null = null;
 
   if (THREAD_SOURCES.has(sourceRaw)) {
-    const msgDir = resolveMessageDirection(body);
-    const labeledLine = labelMessage(rawTranscript, msgDir);
+    const labeledLine = labeledPreview;
     persistedTranscript = labeledLine;
-    // WhatsApp/Telegram allaqachon Mijoz:/Xodim: — reformatsiz nusxa
     formattedTranscript = labeledLine;
 
     let previous: { rawTranscript: string; formattedTranscript?: string | null }[] = [];
-    try {
-      previous = await prisma.call.findMany({
-        where: { phone, source: sourceRaw },
-        orderBy: [{ callDate: "asc" }, { createdAt: "asc" }],
-        take: 40,
-        select: { rawTranscript: true, formattedTranscript: true },
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (
-        isMissingColumnError(msg, "formatted_transcript") ||
-        isMissingColumnError(msg, "formattedTranscript")
-      ) {
+    if (interactionId && !interactionIsNew) {
+      try {
+        previous = await getInteractionCallRecords(interactionId);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!isMissingColumnError(msg, "interaction_id")) throw e;
         previous = await prisma.call.findMany({
           where: { phone, source: sourceRaw },
           orderBy: [{ callDate: "asc" }, { createdAt: "asc" }],
           take: 40,
-          select: { rawTranscript: true },
+          select: { rawTranscript: true, formattedTranscript: true },
         });
-      } else {
-        throw e;
       }
     }
 
@@ -231,6 +254,17 @@ export async function POST(req: Request) {
     }
 
     transcriptForAnalysis = clipTranscript(transcriptForAnalysis);
+  } else if (sourceRaw === "call" && interactionId && !interactionIsNew) {
+    try {
+      const previous = await getInteractionCallRecords(interactionId);
+      if (previous.length > 0) {
+        const history = buildThreadFromCallRecords(previous);
+        transcriptForAnalysis = appendTranscriptLine(history, rawTranscript);
+        transcriptForAnalysis = clipTranscript(transcriptForAnalysis);
+      }
+    } catch {
+      // interaction_id ustuni yo'q bo'lsa — faqat joriy qo'ng'iroq
+    }
   }
 
   const isMessaging = THREAD_SOURCES.has(sourceRaw);
@@ -429,6 +463,7 @@ export async function POST(req: Request) {
     direction: callDirection,
     rawTranscript: persistedTranscript,
     formattedTranscript,
+    interactionId,
     isBusinessRelated: true,
     filteredOut: false,
     businessFilterReason: null,
@@ -468,6 +503,9 @@ export async function POST(req: Request) {
       delete retryData.filteredOut;
       delete retryData.businessFilterReason;
     }
+    if (isMissingColumnError(message, "interaction_id") || isMissingColumnError(message, "interactionId")) {
+      delete retryData.interactionId;
+    }
 
     try {
       const retryCall = await prisma.call.create({
@@ -492,7 +530,35 @@ export async function POST(req: Request) {
       rawTranscript: persistedTranscript,
       callId,
       clearFiltered: true,
+      interactionId,
     });
+
+    if (!interactionId) {
+      const interaction = await prisma.interaction.create({
+        data: {
+          leadId: lead.id,
+          source: sourceRaw,
+          startedAt: callDate!,
+          lastMessageAt: callDate!,
+          status: "active",
+        },
+        select: { id: true },
+      });
+      interactionId = interaction.id;
+      await prisma.$executeRaw`
+        UPDATE calls SET interaction_id = ${interactionId} WHERE id = ${callId};
+      `;
+      await syncInteractionFromAnalysis({
+        interactionId,
+        callDate: callDate!,
+        analysis,
+        employeeName: analysis.employeeName,
+      });
+    } else {
+      await prisma.$executeRaw`
+        UPDATE calls SET interaction_id = ${interactionId} WHERE id = ${callId};
+      `;
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : "syncCallToLead failed";
     console.error("POST /api/calls sync error:", message);

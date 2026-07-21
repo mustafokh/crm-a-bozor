@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { buildCarInterest, normalizeLeadOutcome, stripMakeFromModel } from "@/lib/lead-helpers";
 import { extractMessageText } from "@/lib/calls/analyze-messaging";
+import { syncInteractionFromAnalysis } from "./sync-interaction";
 import type { CallAnalysis } from "./analyze-transcript";
 
 const CHANNEL_TO_LEAD: Record<string, string> = {
@@ -28,6 +29,7 @@ export async function syncCallToLead(params: {
   rawTranscript: string;
   callId: string;
   clearFiltered?: boolean;
+  interactionId?: string | null;
 }) {
   const leadSource = CHANNEL_TO_LEAD[params.channelSource] ?? "CALL";
   const isMessaging =
@@ -145,6 +147,15 @@ export async function syncCallToLead(params: {
     SET lead_id = ${lead.id}
     WHERE id = ${params.callId};
   `;
+
+  if (params.interactionId) {
+    await syncInteractionFromAnalysis({
+      interactionId: params.interactionId,
+      callDate: params.callDate,
+      analysis: params.analysis,
+      employeeName: params.analysis.employeeName,
+    });
+  }
 
   return lead;
 }

@@ -1,4 +1,5 @@
 import { CALLS_HISTORY_INCLUDE, withLatestCall } from "@/lib/calls/latest-call";
+import { INTERACTIONS_INCLUDE, normalizeInteraction } from "@/lib/calls/interaction-helpers";
 import { detectCountryFromPhone } from "@/lib/country-display";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -50,10 +51,17 @@ export async function GET(req: Request) {
         include: { user: { select: { id: true, name: true } } },
       },
       calls: CALLS_HISTORY_INCLUDE,
+      interactions: INTERACTIONS_INCLUDE,
       _count: { select: { conversations: true } },
     },
   });
-  return NextResponse.json({ leads: leads.map(withLatestCall) });
+  return NextResponse.json({
+    leads: leads.map((l) => {
+      const withCalls = withLatestCall(l);
+      const interactions = (l.interactions ?? []).map(normalizeInteraction);
+      return { ...withCalls, interactions };
+    }),
+  });
 }
 
 export async function POST(req: Request) {

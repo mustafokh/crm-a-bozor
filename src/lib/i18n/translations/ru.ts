@@ -284,6 +284,8 @@ export const ru: TranslationDict = {
   "leads.callHistory": "История звонков",
   "leads.noCallHistory": "Звонков пока нет",
   "leads.messageHistory": "WhatsApp переписка",
+  "leads.interactionHistory": "История обращений",
+  "leads.interactionClosed": "Завершено",
   "leads.messages": "Сообщения",
   "leads.noMessageHistory": "Сообщений пока нет",
   "leads.talkSaved": "Разговор сохранён",

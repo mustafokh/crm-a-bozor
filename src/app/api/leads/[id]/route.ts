@@ -5,6 +5,7 @@ import { LEAD_STATUS } from "@/lib/constants";
 import { detectCountryFromPhone } from "@/lib/country-display";
 import { extractTalkFields } from "@/lib/lead-helpers";
 import { CALLS_HISTORY_INCLUDE, withLatestCall } from "@/lib/calls/latest-call";
+import { INTERACTIONS_INCLUDE, normalizeInteraction } from "@/lib/calls/interaction-helpers";
 
 const leadInclude = {
   assignedTo: { select: { id: true, name: true } },
@@ -13,8 +14,16 @@ const leadInclude = {
     include: { user: { select: { id: true, name: true } } },
   },
   calls: CALLS_HISTORY_INCLUDE,
+  interactions: INTERACTIONS_INCLUDE,
   _count: { select: { conversations: true } },
 };
+
+function withInteractions(lead: ReturnType<typeof withLatestCall> & {
+  interactions?: Parameters<typeof normalizeInteraction>[0][];
+}) {
+  const interactions = (lead.interactions ?? []).map(normalizeInteraction);
+  return { ...lead, interactions };
+}
 
 export async function GET(
   _req: Request,
@@ -29,7 +38,7 @@ export async function GET(
     include: leadInclude,
   });
   if (!lead) return NextResponse.json({ error: "Topilmadi" }, { status: 404 });
-  return NextResponse.json({ lead: withLatestCall(lead) });
+  return NextResponse.json({ lead: withInteractions(withLatestCall(lead)) });
 }
 
 export async function PATCH(
@@ -84,7 +93,7 @@ export async function PATCH(
       description: `${lead.fullName} lidi "${LEAD_STATUS[body.status] ?? body.status}" holatiga o'tdi`,
     });
   }
-  return NextResponse.json({ lead: withLatestCall(lead) });
+  return NextResponse.json({ lead: withInteractions(withLatestCall(lead)) });
 }
 
 export async function DELETE(
