@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { resolveCarColor } from "@/lib/car-color";
+import { useI18n } from "@/components/language-provider";
+import { carColorLabel } from "@/lib/i18n/labels";
 
 /** Black / White + rang stickeri (har doim ko‘rinadigan) */
 export function CarColorBadge({
@@ -15,11 +17,13 @@ export function CarColorBadge({
   showLocal?: boolean;
   size?: "sm" | "md" | "lg";
 }) {
+  const { t } = useI18n();
   const info = resolveCarColor(color);
   if (!info) return <span className="text-muted-foreground">—</span>;
 
   const swatch = size === "lg" ? "h-6 w-6" : size === "sm" ? "h-3.5 w-3.5" : "h-5 w-5";
   const pad = size === "lg" ? "px-3 py-1.5 text-sm" : size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs";
+  const label = carColorLabel(t, color);
 
   return (
     <span
@@ -28,7 +32,7 @@ export function CarColorBadge({
         pad,
         className
       )}
-      title={info.labelLocal}
+      title={label}
     >
       <span
         className={cn(
@@ -39,8 +43,8 @@ export function CarColorBadge({
         style={{ backgroundColor: info.hex }}
         aria-hidden
       />
-      <span className="tracking-wide">{info.labelEn}</span>
-      {showLocal && info.labelLocal !== info.labelEn && (
+      <span className="tracking-wide">{label}</span>
+      {showLocal && info.labelLocal !== label && (
         <span className="font-medium text-amber-800/70">({info.labelLocal})</span>
       )}
     </span>

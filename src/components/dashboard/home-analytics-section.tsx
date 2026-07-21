@@ -8,7 +8,7 @@ import {
 import { useI18n } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
 import { leadOutcomeLabel } from "@/lib/lead-helpers";
-import { LEAD_SOURCE } from "@/lib/constants";
+import { leadSourceLabel, carColorLabel } from "@/lib/i18n/labels";
 import { CountUp } from "@/components/count-up";
 import { DualLine, BarsChart, DonutChart } from "@/components/charts";
 import { CarColorBadge } from "@/components/ui/car-color-badge";
@@ -54,11 +54,11 @@ function pct(part: number, total: number) {
   return Math.round((part / total) * 100);
 }
 
-function carBarName(c: { label: string; carColor: string | null }) {
-  const en = resolveCarColor(c.carColor)?.labelEn;
+function carBarName(c: { label: string; carColor: string | null }, t: (k: string) => string) {
+  const color = c.carColor ? carColorLabel(t, c.carColor) : "";
   const model = c.label !== "—" ? c.label : "";
-  if (en && model) return `${en} ${model}`;
-  if (en) return en;
+  if (color && model) return `${color} ${model}`;
+  if (color) return color;
   return model || "—";
 }
 
@@ -130,7 +130,7 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
 
   const donutData = stats.bySource
     .filter((r) => r.count > 0)
-    .map((r) => ({ name: LEAD_SOURCE[r.source] ?? r.source, value: r.count }));
+    .map((r) => ({ name: leadSourceLabel(t, r.source), value: r.count }));
 
   const employeeBars = stats.todayByEmployee.slice(0, 6).map((e) => ({
     name: e.name.split(" ")[0] ?? e.name,
@@ -139,7 +139,7 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
 
   const carRows = (stats.todayCarInterests.length > 0 ? stats.todayCarInterests : stats.topCarInterests).slice(0, 6);
   const carBars = carRows.map((c) => {
-    const full = carBarName(c);
+    const full = carBarName(c, t);
     return {
       name: full.length > 16 ? `${full.slice(0, 14)}…` : full,
       value: c.count,
@@ -152,7 +152,7 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
 
   const week = stats.weeklyTrend ?? [];
   const topToday = stats.topTodayChannel;
-  const topChannelName = topToday?.source ? LEAD_SOURCE[topToday.source] : null;
+  const topChannelName = topToday?.source ? leadSourceLabel(t, topToday.source) : null;
   const byColor = stats.byColor ?? [];
   const byCountry = stats.byCountry ?? [];
   const byOutcome = stats.byOutcome ?? [];
@@ -208,7 +208,7 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
                   </p>
                 </div>
                 <p className="text-center text-xs font-semibold text-white/95">
-                  {LEAD_SOURCE[row.source]} · {share}%
+                  {leadSourceLabel(t, row.source)} · {share}%
                 </p>
               </Link>
             );
@@ -226,9 +226,9 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
               data={week}
               height={260}
               keys={[
-                { key: "CALL", color: "#1D4ED8", label: LEAD_SOURCE.CALL },
-                { key: "WHATSAPP", color: "#16A34A", label: LEAD_SOURCE.WHATSAPP },
-                { key: "TELEGRAM", color: "#229ED9", label: LEAD_SOURCE.TELEGRAM },
+                { key: "CALL", color: "#1D4ED8", label: leadSourceLabel(t, "CALL") },
+                { key: "WHATSAPP", color: "#16A34A", label: leadSourceLabel(t, "WHATSAPP") },
+                { key: "TELEGRAM", color: "#229ED9", label: leadSourceLabel(t, "TELEGRAM") },
               ]}
             />
           ) : (
@@ -257,7 +257,7 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
                       className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-secondary"
                     >
                       <span className="h-2.5 w-2.5 rounded-full" style={{ background: style?.hex }} />
-                      <span className="flex-1 text-sm">{LEAD_SOURCE[row.source]}</span>
+                      <span className="flex-1 text-sm">{leadSourceLabel(t, row.source)}</span>
                       <span className="text-sm font-bold tabular-nums">{share}%</span>
                       <span className="text-xs text-muted-foreground">({row.count})</span>
                     </Link>
@@ -461,7 +461,7 @@ export function HomeAnalyticsSection({ stats }: { stats: DashboardAnalytics }) {
                 <div className="flex items-center gap-3">
                   <Icon className="h-6 w-6" />
                   <div>
-                    <p className="font-bold">{LEAD_SOURCE[row.source]}</p>
+                    <p className="font-bold">{leadSourceLabel(t, row.source)}</p>
                     <p className="text-xs text-white/85">{share}% {t("home.analytics.ofAll")}</p>
                   </div>
                 </div>

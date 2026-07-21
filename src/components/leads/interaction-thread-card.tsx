@@ -9,6 +9,7 @@ import {
   type InteractionInfo,
 } from "@/lib/calls/interaction-helpers";
 import { LEAD_OUTCOME_COLOR } from "@/lib/constants";
+import { callSourceTypeLabel } from "@/lib/i18n/labels";
 import { MessageHistoryCard } from "@/components/leads/call-extras";
 import { CallHistoryCard } from "@/components/leads/call-extras";
 import { HistoryByDayAccordion } from "@/components/leads/history-by-day-accordion";
@@ -55,8 +56,8 @@ export function InteractionThreadCard({ interaction, defaultOpen = false }: Prop
                 {interactionOutcomeLabel(t, outcome)}
               </Badge>
             )}
-            <Badge className="bg-muted text-muted-foreground font-normal text-xs capitalize">
-              {interaction.source}
+            <Badge className="bg-muted text-muted-foreground font-normal text-xs">
+              {callSourceTypeLabel(t, interaction.source)}
             </Badge>
           </div>
         </div>

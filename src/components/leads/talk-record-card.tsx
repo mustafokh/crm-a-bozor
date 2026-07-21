@@ -3,7 +3,8 @@
 import { Badge } from "@/components/ui/badge";
 import { CarColorBadge } from "@/components/ui/car-color-badge";
 import { useI18n } from "@/components/language-provider";
-import { LEAD_OUTCOME_COLOR, PAYMENT_TYPE } from "@/lib/constants";
+import { LEAD_OUTCOME_COLOR } from "@/lib/constants";
+import { paymentTypeLabel } from "@/lib/i18n/labels";
 import { formatCarShort, leadOutcomeLabel, normalizeLeadOutcome } from "@/lib/lead-helpers";
 import { formatDateTime, cn } from "@/lib/utils";
 
@@ -65,7 +66,7 @@ export function TalkRecordCard({ record, compact }: { record: TalkRecord; compac
         <Field label={t("leads.col.budget")} value={record.budget} />
         <Field
           label={t("leads.col.payment")}
-          value={record.paymentType ? PAYMENT_TYPE[record.paymentType] ?? record.paymentType : null}
+          value={record.paymentType ? paymentTypeLabel(t, record.paymentType) : null}
         />
         <Field label={t("leads.col.clientWants")} value={record.clientWants} />
       </div>

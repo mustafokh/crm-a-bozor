@@ -11,7 +11,9 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { useI18n } from "@/components/language-provider";
 import { EXPENSE_CATEGORY } from "@/lib/constants";
+import { expenseCategoryLabel } from "@/lib/i18n/labels";
 import { formatMoney, formatDate } from "@/lib/utils";
 import { validateExpense, hasErrors, type Errors } from "@/lib/validation";
 
@@ -42,6 +44,7 @@ function ErrText({ msg }: { msg?: string }) {
 
 export function ExpenseManager() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [rows, setRows] = useState<Expense[]>([]);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -133,44 +136,44 @@ export function ExpenseManager() {
     if (!deleteId) return;
     await fetch(`/api/expenses/${deleteId}`, { method: "DELETE" });
     setDeleteId(null);
-    toast("O'chirildi");
+    toast(t("common.deleted"));
     load();
   }
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Xarajatlar</CardTitle>
-        <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Qo'shish</Button>
+        <CardTitle>{t("finance.expenses")}</CardTitle>
+        <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> {t("common.add")}</Button>
       </CardHeader>
       <CardContent>
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select value={category} onChange={(e) => setCategory(e.target.value)} className="sm:w-44">
-            <option value="ALL">Barcha kategoriyalar</option>
-            {Object.entries(EXPENSE_CATEGORY).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            <option value="ALL">{t("finance.allCategories")}</option>
+            {Object.keys(EXPENSE_CATEGORY).map((k) => <option key={k} value={k}>{expenseCategoryLabel(t, k)}</option>)}
           </Select>
           <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="sm:w-40" />
           <span className="hidden text-sm text-muted-foreground sm:block">—</span>
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="sm:w-40" />
           {(category !== "ALL" || from || to) && (
             <Button variant="ghost" size="sm" onClick={() => { setCategory("ALL"); setFrom(""); setTo(""); }}>
-              Tozalash
+              {t("common.clear")}
             </Button>
           )}
         </div>
 
         {rows.length === 0 ? (
-          <EmptyState icon={Receipt} title="Xarajat topilmadi" />
+          <EmptyState icon={Receipt} title={t("finance.expenseEmpty")} />
         ) : (
           <Table>
             <THead>
-              <TR><TH>Sana</TH><TH>Kategoriya</TH><TH>Tavsif</TH><TH>Kim</TH><TH>Summa</TH><TH></TH></TR>
+              <TR><TH>{t("common.date")}</TH><TH>{t("finance.colCategory")}</TH><TH>{t("common.description")}</TH><TH>{t("finance.colWho")}</TH><TH>{t("common.amount")}</TH><TH></TH></TR>
             </THead>
             <TBody>
               {rows.map((e) => (
                 <TR key={e.id}>
                   <TD className="text-muted-foreground">{formatDate(e.date)}</TD>
-                  <TD><Badge className="bg-accent text-accent-foreground">{EXPENSE_CATEGORY[e.category]}</Badge></TD>
+                  <TD><Badge className="bg-accent text-accent-foreground">{expenseCategoryLabel(t, e.category)}</Badge></TD>
                   <TD>{e.description ?? "—"}</TD>
                   <TD className="text-muted-foreground">{e.createdBy?.name ?? "—"}</TD>
                   <TD className="font-medium">{formatMoney(e.amount, e.currency)}</TD>
@@ -189,7 +192,7 @@ export function ExpenseManager() {
         {total > PAGE_SIZE && (
           <div className="mt-3 flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              Jami {total} ta · {page}/{totalPages}
+              {t("common.pagination", { total: String(total), page: String(page), totalPages: String(totalPages) })}
             </p>
             <div className="flex gap-1.5">
               <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
@@ -203,34 +206,34 @@ export function ExpenseManager() {
         )}
       </CardContent>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={editId ? "Xarajatni tahrirlash" : "Yangi xarajat"} className="max-w-md"
-        footer={<><Button variant="outline" size="sm" onClick={() => setOpen(false)}>Bekor</Button><Button size="sm" onClick={save}>Saqlash</Button></>}>
+      <Modal open={open} onClose={() => setOpen(false)} title={editId ? t("finance.expenseEdit") : t("finance.expenseNew")} className="max-w-md"
+        footer={<><Button variant="outline" size="sm" onClick={() => setOpen(false)}>{t("common.cancel")}</Button><Button size="sm" onClick={save}>{t("common.save")}</Button></>}>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Kategoriya</Label>
+            <Label>{t("finance.colCategory")}</Label>
             <Select value={form.category} onChange={(e) => setField("category", e.target.value)}>
-              {Object.entries(EXPENSE_CATEGORY).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.keys(EXPENSE_CATEGORY).map((k) => <option key={k} value={k}>{expenseCategoryLabel(t, k)}</option>)}
             </Select>
             <ErrText msg={errors.category} />
           </div>
           <div>
-            <Label>Sana</Label>
+            <Label>{t("common.date")}</Label>
             <Input type="date" value={form.date} onChange={(e) => setField("date", e.target.value)} />
             <ErrText msg={errors.date} />
           </div>
           <div>
-            <Label>Summa *</Label>
+            <Label>{t("common.amount")} *</Label>
             <div className="flex gap-2">
               <Input type="number" value={form.amount} onChange={(e) => setField("amount", e.target.value)} className={errors.amount ? "border-destructive" : ""} />
               <Select value={form.currency} onChange={(e) => setField("currency", e.target.value)} className="w-24"><option>UZS</option><option>USD</option></Select>
             </div>
             <ErrText msg={errors.amount} />
           </div>
-          <div className="col-span-2"><Label>Tavsif</Label><Input value={form.description} onChange={(e) => setField("description", e.target.value)} /></div>
+          <div className="col-span-2"><Label>{t("common.description")}</Label><Input value={form.description} onChange={(e) => setField("description", e.target.value)} /></div>
         </div>
       </Modal>
 
-      <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={remove} title="Xarajatni o'chirish" description="Davom etasizmi?" />
+      <ConfirmDialog open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={remove} title={t("finance.expenseDeleteTitle")} description={t("common.confirm")} />
     </Card>
   );
 }

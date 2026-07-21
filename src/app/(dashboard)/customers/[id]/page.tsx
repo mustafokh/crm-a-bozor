@@ -7,13 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AddNote } from "@/components/customers/add-note";
 import { formatMoney, formatDate, timeAgo, initials } from "@/lib/utils";
-import { PAYMENT_TYPE } from "@/lib/constants";
+import { getServerT } from "@/lib/i18n/server";
+import { paymentTypeLabel } from "@/lib/i18n/labels";
 
 export default async function CustomerDetail({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = await getServerT();
   const { id } = await params;
   const customer = await prisma.customer.findUnique({
     where: { id },
@@ -30,7 +32,7 @@ export default async function CustomerDetail({
     <div>
       <Link href="/customers">
         <Button variant="ghost" size="sm" className="mb-4">
-          <ArrowLeft className="h-4 w-4" /> Orqaga
+          <ArrowLeft className="h-4 w-4" /> {t("common.back")}
         </Button>
       </Link>
 
@@ -45,7 +47,7 @@ export default async function CustomerDetail({
                 {customer.fullName}
                 {customer.isVip && <Star className="h-5 w-5 fill-warning text-warning" />}
               </h1>
-              {customer.isVip && <Badge className="mt-1 bg-warning/15 text-warning">VIP mijoz</Badge>}
+              {customer.isVip && <Badge className="mt-1 bg-warning/15 text-warning">{t("customerDetail.vipBadge")}</Badge>}
 
               <div className="mt-5 space-y-3 text-left text-sm">
                 <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /> {customer.phone}</div>
@@ -55,15 +57,15 @@ export default async function CustomerDetail({
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-4">
-                <div><p className="text-2xl font-bold">{customer.deals.length}</p><p className="text-xs text-muted-foreground">Savdolar</p></div>
-                <div><p className="text-2xl font-bold text-primary">{formatMoney(totalSpent, "USD", { compact: true })}</p><p className="text-xs text-muted-foreground">Umumiy summa</p></div>
+                <div><p className="text-2xl font-bold">{customer.deals.length}</p><p className="text-xs text-muted-foreground">{t("col.deals")}</p></div>
+                <div><p className="text-2xl font-bold text-primary">{formatMoney(totalSpent, "USD", { compact: true })}</p><p className="text-xs text-muted-foreground">{t("customerDetail.totalSpent")}</p></div>
               </div>
             </CardContent>
           </Card>
 
           {customer.notes && (
             <Card>
-              <CardHeader><CardTitle>Izohlar</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t("customers.notes")}</CardTitle></CardHeader>
               <CardContent><p className="text-sm text-muted-foreground">{customer.notes}</p></CardContent>
             </Card>
           )}
@@ -71,7 +73,7 @@ export default async function CustomerDetail({
 
         <div className="space-y-6 lg:col-span-2">
           <Card>
-            <CardHeader><CardTitle>Sotib olingan mashinalar</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("customerDetail.purchasedCars")}</CardTitle></CardHeader>
             <CardContent>
               {customer.deals.length ? (
                 <div className="space-y-3">
@@ -81,7 +83,7 @@ export default async function CustomerDetail({
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted"><Car className="h-5 w-5" /></div>
                         <div>
                           <p className="font-medium">{d.car.make} {d.car.model}</p>
-                          <p className="text-xs text-muted-foreground">{PAYMENT_TYPE[d.paymentType]} · {formatDate(d.createdAt)}</p>
+                          <p className="text-xs text-muted-foreground">{paymentTypeLabel(t, d.paymentType)} · {formatDate(d.createdAt)}</p>
                         </div>
                       </div>
                       <p className="font-semibold text-primary">{formatMoney(d.price, d.currency)}</p>
@@ -89,13 +91,13 @@ export default async function CustomerDetail({
                   ))}
                 </div>
               ) : (
-                <p className="py-6 text-center text-sm text-muted-foreground">Hali savdo yo'q</p>
+                <p className="py-6 text-center text-sm text-muted-foreground">{t("customerDetail.noDeals")}</p>
               )}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Murojaatlar tarixi</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("customerDetail.contactHistory")}</CardTitle></CardHeader>
             <CardContent>
               <AddNote customerId={customer.id} />
               <div className="mt-4 space-y-3">
@@ -103,11 +105,11 @@ export default async function CustomerDetail({
                   <div key={a.id} className="flex gap-3 border-l-2 border-border pl-4">
                     <div className="flex-1">
                       <p className="text-sm">{a.description}</p>
-                      <p className="text-xs text-muted-foreground">{a.user?.name ?? "Tizim"} · {timeAgo(a.createdAt)}</p>
+                      <p className="text-xs text-muted-foreground">{a.user?.name ?? t("common.system")} · {timeAgo(a.createdAt)}</p>
                     </div>
                   </div>
                 )) : (
-                  <p className="py-4 text-center text-sm text-muted-foreground">Murojaatlar yo'q</p>
+                  <p className="py-4 text-center text-sm text-muted-foreground">{t("customerDetail.noContacts")}</p>
                 )}
               </div>
             </CardContent>

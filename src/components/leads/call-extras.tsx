@@ -16,7 +16,8 @@ import {
   type CallHistoryItem,
   type LatestCallInfo,
 } from "@/lib/calls/latest-call";
-import { CALL_OUTCOME_COLOR, CALL_SOURCE_TYPE } from "@/lib/constants";
+import { CALL_OUTCOME_COLOR } from "@/lib/constants";
+import { callSourceTypeLabel } from "@/lib/i18n/labels";
 import { formatDateTime, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { TranscriptBubbles, TranscriptDialogView } from "@/components/leads/transcript-dialog";
@@ -131,8 +132,7 @@ export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
     return <MessageHistoryCard call={normalized} />;
   }
   const [open, setOpen] = useState(false);
-  const sourceLabel =
-    (call.source && CALL_SOURCE_TYPE[call.source]) || call.source || "—";
+  const sourceLabel = callSourceTypeLabel(t, call.source);
   const outcomeLabel = call.outcome
     ? t(`enum.callOutcome.${call.outcome}`) || call.outcome
     : null;
@@ -199,10 +199,7 @@ export function CallHistoryCard({ call }: { call: CallHistoryItem }) {
 export function MessageHistoryCard({ call }: { call: CallHistoryItem }) {
   const { t } = useI18n();
   const normalized = withEffectiveSource(call);
-  const sourceLabel =
-    (normalized.source && CALL_SOURCE_TYPE[normalized.source]) ||
-    normalized.source ||
-    "—";
+  const sourceLabel = callSourceTypeLabel(t, normalized.source);
   const text = messagingDisplayText(normalized);
   const showCarDetails = shouldShowCarDetails(normalized);
 

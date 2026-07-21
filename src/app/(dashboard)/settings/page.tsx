@@ -11,7 +11,8 @@ import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { ROLES, type Role } from "@/lib/constants";
+import { ROLES } from "@/lib/constants";
+import { roleLabel } from "@/lib/i18n/labels";
 import { cn } from "@/lib/utils";
 
 interface User {
@@ -101,50 +102,50 @@ export default function SettingsPage() {
 
       {tab === "company" ? (
         <Card>
-          <CardHeader><CardTitle>Kompaniya ma'lumotlari</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("settings.companyInfo")}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2"><Label>Nomi</Label><Input value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} /></div>
-              <div><Label>Telefon</Label><Input value={company.phone ?? ""} onChange={(e) => setCompany({ ...company, phone: e.target.value })} /></div>
-              <div><Label>Email</Label><Input value={company.email ?? ""} onChange={(e) => setCompany({ ...company, email: e.target.value })} /></div>
-              <div className="sm:col-span-2"><Label>Manzil</Label><Input value={company.address ?? ""} onChange={(e) => setCompany({ ...company, address: e.target.value })} /></div>
-              <div><Label>Logotip (URL)</Label><Input value={company.logo ?? ""} onChange={(e) => setCompany({ ...company, logo: e.target.value })} placeholder="https://..." /></div>
+              <div className="sm:col-span-2"><Label>{t("settings.companyName")}</Label><Input value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} /></div>
+              <div><Label>{t("col.phone")}</Label><Input value={company.phone ?? ""} onChange={(e) => setCompany({ ...company, phone: e.target.value })} /></div>
+              <div><Label>{t("login.email")}</Label><Input value={company.email ?? ""} onChange={(e) => setCompany({ ...company, email: e.target.value })} /></div>
+              <div className="sm:col-span-2"><Label>{t("col.address")}</Label><Input value={company.address ?? ""} onChange={(e) => setCompany({ ...company, address: e.target.value })} /></div>
+              <div><Label>{t("settings.companyLogo")}</Label><Input value={company.logo ?? ""} onChange={(e) => setCompany({ ...company, logo: e.target.value })} placeholder="https://..." /></div>
               <div>
-                <Label>Valyuta kursi (1 USD = ? so'm)</Label>
+                <Label>{t("settings.usdRate")}</Label>
                 <Input type="number" value={company.usdRate} onChange={(e) => setCompany({ ...company, usdRate: +e.target.value })} />
               </div>
               <div>
-                <Label>Asosiy valyuta</Label>
+                <Label>{t("settings.defaultCurrency")}</Label>
                 <Select value={company.defaultCurrency} onChange={(e) => setCompany({ ...company, defaultCurrency: e.target.value })}>
-                  <option value="USD">USD ($)</option><option value="UZS">UZS (so'm)</option>
+                  <option value="USD">{t("settings.currencyUsd")}</option><option value="UZS">{t("settings.currencyUzs")}</option>
                 </Select>
               </div>
-              <div className="sm:col-span-2"><Label>Shartnoma shabloni matni</Label><Textarea value={company.contractTemplate ?? ""} onChange={(e) => setCompany({ ...company, contractTemplate: e.target.value })} /></div>
+              <div className="sm:col-span-2"><Label>{t("settings.contractTemplate")}</Label><Textarea value={company.contractTemplate ?? ""} onChange={(e) => setCompany({ ...company, contractTemplate: e.target.value })} /></div>
             </div>
             <div className="mt-5 flex justify-end">
-              <Button onClick={saveCompany} disabled={savingCompany}>{savingCompany ? "Saqlanmoqda..." : "Saqlash"}</Button>
+              <Button onClick={saveCompany} disabled={savingCompany}>{savingCompany ? t("common.saving") : t("common.save")}</Button>
             </div>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Foydalanuvchilar va rollar</CardTitle>
-            <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Foydalanuvchi</Button>
+            <CardTitle>{t("settings.usersAndRoles")}</CardTitle>
+            <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> {t("settings.addUser")}</Button>
           </CardHeader>
           <CardContent>
             <Table>
               <THead>
-                <TR><TH>Ism</TH><TH>Email</TH><TH>Rol</TH><TH>Komissiya</TH><TH>Holat</TH><TH></TH></TR>
+                <TR><TH>{t("customers.fullName")}</TH><TH>{t("login.email")}</TH><TH>{t("settings.role")}</TH><TH>{t("settings.commission")}</TH><TH>{t("settings.status")}</TH><TH></TH></TR>
               </THead>
               <TBody>
                 {users.map((u) => (
                   <TR key={u.id}>
                     <TD className="font-medium">{u.name}</TD>
                     <TD className="text-muted-foreground">{u.email}</TD>
-                    <TD><Badge className="bg-accent text-accent-foreground">{ROLES[u.role as Role]}</Badge></TD>
+                    <TD><Badge className="bg-accent text-accent-foreground">{roleLabel(t, u.role)}</Badge></TD>
                     <TD>{u.commissionRate}%</TD>
-                    <TD><Badge className={cn(u.active ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}>{u.active ? "Faol" : "Bloklangan"}</Badge></TD>
+                    <TD><Badge className={cn(u.active ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}>{u.active ? t("settings.statusActive") : t("settings.statusBlocked")}</Badge></TD>
                     <TD>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
@@ -161,20 +162,20 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title={editId ? "Foydalanuvchini tahrirlash" : "Yangi foydalanuvchi"} className="max-w-md"
-        footer={<><Button variant="outline" size="sm" onClick={() => setOpen(false)}>Bekor</Button><Button size="sm" onClick={saveUser}>Saqlash</Button></>}>
+      <Modal open={open} onClose={() => setOpen(false)} title={editId ? t("settings.editUser") : t("settings.newUser")} className="max-w-md"
+        footer={<><Button variant="outline" size="sm" onClick={() => setOpen(false)}>{t("common.cancel")}</Button><Button size="sm" onClick={saveUser}>{t("common.save")}</Button></>}>
         <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2"><Label>Ism</Label><Input value={uForm.name} onChange={(e) => setUForm({ ...uForm, name: e.target.value })} /></div>
-          <div className="col-span-2"><Label>Email</Label><Input value={uForm.email} disabled={!!editId} onChange={(e) => setUForm({ ...uForm, email: e.target.value })} /></div>
-          <div className="col-span-2"><Label>{editId ? "Yangi parol (ixtiyoriy)" : "Parol"}</Label><Input type="password" value={uForm.password} onChange={(e) => setUForm({ ...uForm, password: e.target.value })} /></div>
+          <div className="col-span-2"><Label>{t("customers.fullName")}</Label><Input value={uForm.name} onChange={(e) => setUForm({ ...uForm, name: e.target.value })} /></div>
+          <div className="col-span-2"><Label>{t("login.email")}</Label><Input value={uForm.email} disabled={!!editId} onChange={(e) => setUForm({ ...uForm, email: e.target.value })} /></div>
+          <div className="col-span-2"><Label>{editId ? t("settings.newPasswordOptional") : t("settings.password")}</Label><Input type="password" value={uForm.password} onChange={(e) => setUForm({ ...uForm, password: e.target.value })} /></div>
           <div>
-            <Label>Rol</Label>
+            <Label>{t("settings.role")}</Label>
             <Select value={uForm.role} onChange={(e) => setUForm({ ...uForm, role: e.target.value })}>
-              {Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.keys(ROLES).map((k) => <option key={k} value={k}>{roleLabel(t, k)}</option>)}
             </Select>
           </div>
-          <div><Label>Komissiya (%)</Label><Input type="number" step="0.5" value={uForm.commissionRate} onChange={(e) => setUForm({ ...uForm, commissionRate: +e.target.value })} /></div>
-          <div className="col-span-2"><Label>Telefon</Label><Input value={uForm.phone} onChange={(e) => setUForm({ ...uForm, phone: e.target.value })} /></div>
+          <div><Label>{t("settings.commission")}</Label><Input type="number" step="0.5" value={uForm.commissionRate} onChange={(e) => setUForm({ ...uForm, commissionRate: +e.target.value })} /></div>
+          <div className="col-span-2"><Label>{t("col.phone")}</Label><Input value={uForm.phone} onChange={(e) => setUForm({ ...uForm, phone: e.target.value })} /></div>
         </div>
       </Modal>
     </div>

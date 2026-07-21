@@ -6,7 +6,7 @@ import { useI18n } from "@/components/language-provider";
 import {
   CAR_COLOR_OPTIONS, CAR_MAKE_OPTIONS, LEAD_OUTCOMES, PAYMENT_TYPE,
 } from "@/lib/constants";
-import { resolveCarColor } from "@/lib/car-color";
+import { carColorLabel, paymentTypeLabel } from "@/lib/i18n/labels";
 
 export interface TalkFormState {
   carMake: string;
@@ -106,7 +106,7 @@ export function TalkFields({
             <option value="">{t("common.select")}</option>
             {CAR_COLOR_OPTIONS.map((c) => (
               <option key={c} value={c}>
-                {resolveCarColor(c)?.labelEn ?? c}
+                {carColorLabel(t, c)}
               </option>
             ))}
           </Select>
@@ -128,8 +128,8 @@ export function TalkFields({
           <Label>{t("leads.col.payment")}</Label>
           <Select value={value.paymentType} onChange={(e) => set({ paymentType: e.target.value })}>
             <option value="">{t("common.select")}</option>
-            {Object.entries(PAYMENT_TYPE).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
+            {Object.keys(PAYMENT_TYPE).map((k) => (
+              <option key={k} value={k}>{paymentTypeLabel(t, k)}</option>
             ))}
           </Select>
         </div>

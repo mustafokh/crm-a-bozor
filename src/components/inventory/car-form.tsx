@@ -6,6 +6,14 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { useI18n } from "@/components/language-provider";
+import {
+  carConditionLabel,
+  carStatusLabel,
+  transmissionEnumLabel,
+  fuelTypeLabel,
+  drivetrainLabel,
+} from "@/lib/i18n/labels";
 import { validateCar, hasErrors, type Errors } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 import {
@@ -57,6 +65,7 @@ export function CarForm({
   initial?: CarFormData | null;
 }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -94,13 +103,13 @@ export function CarForm({
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) {
-        toast(data.error || "Yuklashda xatolik", "error");
+        toast(data.error || t("inventory.form.uploadError"), "error");
       } else {
         setImages((prev) => [...prev, ...data.urls]);
-        toast(`${data.urls.length} ta rasm yuklandi`);
+        toast(t("inventory.form.uploadSuccess", { count: String(data.urls.length) }));
       }
     } catch {
-      toast("Yuklashda xatolik", "error");
+      toast(t("inventory.form.uploadError"), "error");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -120,7 +129,7 @@ export function CarForm({
     const errs = validateCar(form);
     if (hasErrors(errs)) {
       setErrors(errs);
-      toast("Formadagi xatolarni tuzating", "error");
+      toast(t("common.fixErrors"), "error");
       return;
     }
     setSaving(true);
@@ -134,10 +143,10 @@ export function CarForm({
     if (!res.ok) {
       const d = await res.json();
       if (d.fields) setErrors(d.fields);
-      toast(d.error || "Xatolik", "error");
+      toast(d.error || t("common.error"), "error");
       return;
     }
-    toast(initial?.id ? "Mashina yangilandi" : "Mashina qo'shildi");
+    toast(initial?.id ? t("inventory.updated") : t("inventory.saved"));
     onSaved();
     onClose();
   }
@@ -146,22 +155,22 @@ export function CarForm({
     <Modal
       open={open}
       onClose={onClose}
-      title={initial?.id ? "Mashinani tahrirlash" : "Yangi mashina qo'shish"}
+      title={initial?.id ? t("inventory.edit") : t("inventory.add")}
       className="max-w-2xl"
       footer={
         <>
           <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
-            Bekor qilish
+            {t("common.cancel")}
           </Button>
           <Button size="sm" onClick={submit} disabled={saving || uploading}>
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("common.saving") : t("common.save")}
           </Button>
         </>
       }
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <Label>Marka *</Label>
+          <Label>{t("common.make")} *</Label>
           <Select value={form.make} onChange={(e) => set("make", e.target.value)} className={invalid("make")}>
             {CAR_MAKES.map((m) => (
               <option key={m} value={m}>{m}</option>
@@ -170,117 +179,117 @@ export function CarForm({
           <ErrText msg={errors.make} />
         </div>
         <div>
-          <Label>Model *</Label>
-          <Input value={form.model} onChange={(e) => set("model", e.target.value)} placeholder="Masalan: Camry 70" className={invalid("model")} />
+          <Label>{t("common.model")} *</Label>
+          <Input value={form.model} onChange={(e) => set("model", e.target.value)} placeholder={t("inventory.form.modelPlaceholder")} className={invalid("model")} />
           <ErrText msg={errors.model} />
         </div>
         <div>
-          <Label>Yil *</Label>
+          <Label>{t("col.year")} *</Label>
           <Input type="number" value={form.year} onChange={(e) => set("year", e.target.value)} className={invalid("year")} />
           <ErrText msg={errors.year} />
         </div>
         <div>
-          <Label>Rang</Label>
-          <Input value={form.color ?? ""} onChange={(e) => set("color", e.target.value)} placeholder="Oq" />
+          <Label>{t("public.showroom.color")}</Label>
+          <Input value={form.color ?? ""} onChange={(e) => set("color", e.target.value)} placeholder={t("inventory.form.colorPlaceholder")} />
         </div>
         <div>
-          <Label>VIN-kod</Label>
-          <Input value={form.vin ?? ""} onChange={(e) => set("vin", e.target.value)} className={invalid("vin")} placeholder="ixtiyoriy" />
+          <Label>{t("inventory.form.vin")}</Label>
+          <Input value={form.vin ?? ""} onChange={(e) => set("vin", e.target.value)} className={invalid("vin")} placeholder={t("inventory.form.optional")} />
           <ErrText msg={errors.vin} />
         </div>
         <div>
-          <Label>Kuzov raqami</Label>
+          <Label>{t("inventoryDetail.bodyNumber")}</Label>
           <Input value={form.bodyNumber ?? ""} onChange={(e) => set("bodyNumber", e.target.value)} />
         </div>
         <div>
-          <Label>Dvigatel hajmi (L)</Label>
+          <Label>{t("inventory.form.engineVolume")}</Label>
           <Input type="number" step="0.1" value={form.engineVolume ?? ""} onChange={(e) => set("engineVolume", e.target.value)} placeholder="2.0" className={invalid("engineVolume")} />
           <ErrText msg={errors.engineVolume} />
         </div>
         <div>
-          <Label>Probeg (km)</Label>
+          <Label>{t("col.mileage")} (km)</Label>
           <Input type="number" value={form.mileage} onChange={(e) => set("mileage", e.target.value)} className={invalid("mileage")} />
           <ErrText msg={errors.mileage} />
         </div>
         <div>
-          <Label>Holati</Label>
+          <Label>{t("col.condition")}</Label>
           <Select value={form.condition} onChange={(e) => set("condition", e.target.value)}>
-            {Object.entries(CAR_CONDITION).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
+            {Object.keys(CAR_CONDITION).map((k) => (
+              <option key={k} value={k}>{carConditionLabel(t, k)}</option>
             ))}
           </Select>
         </div>
         <div>
-          <Label>Status</Label>
+          <Label>{t("col.status")}</Label>
           <Select value={form.status} onChange={(e) => set("status", e.target.value)}>
-            {Object.entries(CAR_STATUS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
+            {Object.keys(CAR_STATUS).map((k) => (
+              <option key={k} value={k}>{carStatusLabel(t, k)}</option>
             ))}
           </Select>
         </div>
         <div>
-          <Label>Transmissiya</Label>
+          <Label>{t("public.showroom.transmission")}</Label>
           <Select value={form.transmission ?? ""} onChange={(e) => set("transmission", e.target.value)}>
             <option value="">—</option>
-            {Object.entries(TRANSMISSION).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
+            {Object.keys(TRANSMISSION).map((k) => (
+              <option key={k} value={k}>{transmissionEnumLabel(t, k)}</option>
             ))}
           </Select>
         </div>
         <div>
-          <Label>Yoqilg'i</Label>
+          <Label>{t("public.showroom.fuel")}</Label>
           <Select value={form.fuelType ?? ""} onChange={(e) => set("fuelType", e.target.value)}>
             <option value="">—</option>
-            {Object.entries(FUEL_TYPE).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
+            {Object.keys(FUEL_TYPE).map((k) => (
+              <option key={k} value={k}>{fuelTypeLabel(t, k)}</option>
             ))}
           </Select>
         </div>
         <div>
-          <Label>Tortish tizimi</Label>
+          <Label>{t("inventoryDetail.drivetrain")}</Label>
           <Select value={form.drivetrain ?? ""} onChange={(e) => set("drivetrain", e.target.value)}>
             <option value="">—</option>
-            {Object.entries(DRIVETRAIN).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
+            {Object.keys(DRIVETRAIN).map((k) => (
+              <option key={k} value={k}>{drivetrainLabel(t, k)}</option>
             ))}
           </Select>
         </div>
         <div>
-          <Label>Valyuta</Label>
+          <Label>{t("inventory.form.currency")}</Label>
           <Select value={form.currency} onChange={(e) => set("currency", e.target.value)}>
-            <option value="USD">USD ($)</option>
-            <option value="UZS">UZS (so'm)</option>
+            <option value="USD">{t("settings.currencyUsd")}</option>
+            <option value="UZS">{t("settings.currencyUzs")}</option>
           </Select>
         </div>
         <div>
-          <Label>Sotib olingan narx *</Label>
+          <Label>{t("deals.purchasePrice")} *</Label>
           <Input type="number" value={form.purchasePrice} onChange={(e) => set("purchasePrice", e.target.value)} className={invalid("purchasePrice")} />
           <ErrText msg={errors.purchasePrice} />
         </div>
         <div>
-          <Label>Sotish narxi *</Label>
+          <Label>{t("deals.salePrice")} *</Label>
           <Input type="number" value={form.salePrice} onChange={(e) => set("salePrice", e.target.value)} className={invalid("salePrice")} />
           <ErrText msg={errors.salePrice} />
         </div>
         <div className="sm:col-span-2">
-          <Label>Yetkazib beruvchi</Label>
+          <Label>{t("col.supplier")}</Label>
           <Input value={form.supplier ?? ""} onChange={(e) => set("supplier", e.target.value)} />
         </div>
         <div className="sm:col-span-2">
-          <Label>Tavsif</Label>
+          <Label>{t("common.description")}</Label>
           <Textarea value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
         </div>
 
         {/* Images: real upload + optional URL */}
         <div className="sm:col-span-2">
           <div className="mb-1.5 flex items-center justify-between">
-            <Label className="mb-0">Rasmlar</Label>
+            <Label className="mb-0">{t("inventory.form.images")}</Label>
             <button
               type="button"
               onClick={() => setShowUrl((s) => !s)}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
-              <Link2 className="h-3.5 w-3.5" /> {showUrl ? "URL yashirish" : "URL orqali qo'shish"}
+              <Link2 className="h-3.5 w-3.5" /> {showUrl ? t("inventory.form.hideUrl") : t("inventory.form.showUrl")}
             </button>
           </div>
 
@@ -293,8 +302,8 @@ export function CarForm({
             ) : (
               <Upload className="h-6 w-6 text-muted-foreground" />
             )}
-            <p className="mt-2 text-sm font-medium">Rasm yuklash uchun bosing</p>
-            <p className="text-xs text-muted-foreground">JPG, PNG, WEBP · maks. 5 MB</p>
+            <p className="mt-2 text-sm font-medium">{t("inventory.form.uploadClick")}</p>
+            <p className="text-xs text-muted-foreground">{t("inventory.form.uploadFormats")}</p>
             <input
               ref={fileRef}
               type="file"
@@ -309,7 +318,7 @@ export function CarForm({
             <div className="mt-2 flex gap-2">
               <Input
                 id="url-input"
-                placeholder="https://... rasm havolasi"
+                placeholder={t("inventory.form.urlPlaceholder")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -346,16 +355,16 @@ export function CarForm({
                   <img src={url} alt="" className="h-full w-full object-cover" />
                   {i === 0 && (
                     <span className="absolute left-1 top-1 flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[9px] font-medium text-primary-foreground">
-                      <Star className="h-2.5 w-2.5 fill-current" /> Asosiy
+                      <Star className="h-2.5 w-2.5 fill-current" /> {t("inventory.form.primaryPhoto")}
                     </span>
                   )}
                   <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                     {i !== 0 && (
-                      <button type="button" onClick={() => makePrimary(i)} title="Asosiy qilish" className="rounded bg-white/20 p-1 text-white hover:bg-white/30">
+                      <button type="button" onClick={() => makePrimary(i)} title={t("inventory.form.makePrimary")} className="rounded bg-white/20 p-1 text-white hover:bg-white/30">
                         <Star className="h-3.5 w-3.5" />
                       </button>
                     )}
-                    <button type="button" onClick={() => setImages(images.filter((_, idx) => idx !== i))} title="O'chirish" className="rounded bg-white/20 p-1 text-white hover:bg-destructive">
+                    <button type="button" onClick={() => setImages(images.filter((_, idx) => idx !== i))} title={t("common.delete")} className="rounded bg-white/20 p-1 text-white hover:bg-destructive">
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>

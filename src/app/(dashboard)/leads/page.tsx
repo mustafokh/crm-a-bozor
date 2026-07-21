@@ -43,6 +43,7 @@ import {
   LEAD_SOURCE, LEAD_OUTCOMES, LEAD_OUTCOME_COLOR, COUNTRY_OPTIONS, CAR_COLOR_OPTIONS,
   CHANNEL_SOURCES, CHANNEL_COLOR,
 } from "@/lib/constants";
+import { countryLabel, leadSourceLabel, carColorLabel, paymentTypeLabel } from "@/lib/i18n/labels";
 import { detectCountryFromPhone } from "@/lib/country-display";
 import { formatCarShort, leadOutcomeLabel, normalizeLeadOutcome } from "@/lib/lead-helpers";
 import { formatDateTime, cn } from "@/lib/utils";
@@ -433,7 +434,7 @@ function LeadsPageContent() {
                 active ? colors.tabActive : colors.tab
               )}
             >
-              {LEAD_SOURCE[s]} ({sourceCounts[s] ?? 0})
+              {leadSourceLabel(t, s)} ({sourceCounts[s] ?? 0})
             </button>
           );
         })}
@@ -443,13 +444,13 @@ function LeadsPageContent() {
       {viewMode === "main" && (
       <div className="mb-3 flex flex-wrap items-center gap-4 text-xs font-semibold">
         <span className="flex items-center gap-1.5 text-blue-800">
-          <span className="inline-block h-4 w-2 rounded-full bg-blue-700" /> Qo&apos;ng&apos;iroq
+          <span className="inline-block h-4 w-2 rounded-full bg-blue-700" /> {leadSourceLabel(t, "CALL")}
         </span>
         <span className="flex items-center gap-1.5 text-green-800">
-          <span className="inline-block h-4 w-2 rounded-full bg-green-600" /> WhatsApp
+          <span className="inline-block h-4 w-2 rounded-full bg-green-600" /> {leadSourceLabel(t, "WHATSAPP")}
         </span>
         <span className="flex items-center gap-1.5 text-sky-800">
-          <span className="inline-block h-4 w-2 rounded-full bg-[#229ED9]" /> Telegram
+          <span className="inline-block h-4 w-2 rounded-full bg-[#229ED9]" /> {leadSourceLabel(t, "TELEGRAM")}
         </span>
       </div>
       )}
@@ -473,13 +474,13 @@ function LeadsPageContent() {
         <Select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} className="xl:w-40">
           <option value="">{t("leads.filterCountry")}</option>
           {COUNTRY_OPTIONS.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>{countryLabel(t, c)}</option>
           ))}
         </Select>
         <Select value={filterColor} onChange={(e) => setFilterColor(e.target.value)} className="xl:w-36">
           <option value="">{t("leads.filterColor")}</option>
           {CAR_COLOR_OPTIONS.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>{carColorLabel(t, c)}</option>
           ))}
         </Select>
         <Select value={filterOutcome} onChange={(e) => setFilterOutcome(e.target.value)} className="xl:w-40">
@@ -490,8 +491,8 @@ function LeadsPageContent() {
         </Select>
         <Select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} className="xl:w-40">
           <option value="">{t("leads.filterSource")}</option>
-          {Object.entries(LEAD_SOURCE).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+          {Object.keys(LEAD_SOURCE).map((k) => (
+            <option key={k} value={k}>{leadSourceLabel(t, k)}</option>
           ))}
         </Select>
       </div>
@@ -543,7 +544,7 @@ function LeadsPageContent() {
                     <TD className="font-medium">{lead.assignedTo?.name ?? "—"}</TD>
                     <TD>
                       <Badge className={cn("font-medium", ch?.badge ?? "bg-secondary text-secondary-foreground")}>
-                        {LEAD_SOURCE[lead.source] ?? lead.source}
+                        {leadSourceLabel(t, lead.source)}
                       </Badge>
                     </TD>
                     <TD>
@@ -686,8 +687,8 @@ function LeadsPageContent() {
           <div>
             <Label>{t("leads.source")}</Label>
             <Select value={clientForm.source} onChange={(e) => setClientForm({ ...clientForm, source: e.target.value })}>
-              {Object.entries(LEAD_SOURCE).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
+              {Object.keys(LEAD_SOURCE).map((k) => (
+                <option key={k} value={k}>{leadSourceLabel(t, k)}</option>
               ))}
             </Select>
           </div>

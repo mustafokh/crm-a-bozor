@@ -37,18 +37,18 @@ export default async function EmployeesPage() {
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
-          <CardHeader><CardTitle>Savdo bo'yicha reyting</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("employees.salesRanking")}</CardTitle></CardHeader>
           <CardContent>
             {chartData.length ? <BarsChart data={chartData} dataKey="value" color="hsl(217 100% 68%)" /> : null}
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader><CardTitle>Xodimlar samaradorligi</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("employees.performance")}</CardTitle></CardHeader>
           <CardContent>
             <Table>
               <THead>
-                <TR><TH>#</TH><TH>Xodim</TH><TH>Lidlar</TH><TH>Savdolar</TH><TH>Konversiya</TH><TH>Tushum</TH><TH>Komissiya</TH></TR>
+                <TR><TH>#</TH><TH>{t("employees.colName")}</TH><TH>{t("nav.leads")}</TH><TH>{t("nav.deals")}</TH><TH>{t("employees.colConversion")}</TH><TH>{t("employees.colRevenue")}</TH><TH>{t("employees.colCommission")}</TH></TR>
               </THead>
               <TBody>
                 {rows.map((r, i) => (
