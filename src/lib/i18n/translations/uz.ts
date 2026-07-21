@@ -212,11 +212,13 @@ export const uz: TranslationDict = {
   "enum.leadOutcome.AGREED": "Kelishildi",
   "enum.leadOutcome.REJECTED": "Rad etdi",
   "enum.leadOutcome.BOUGHT": "Sotib oldi",
+  "enum.leadOutcome.PRICE_OBJECTION": "Qimmat deb topdi",
   "enum.leadOutcome.NOT_INTERESTED": "Qiziqmaydi",
   "enum.leadOutcome.UNCLEAR": "Aniqlanmadi",
 
   "enum.callOutcome.purchased": "Sotib oldi",
   "enum.callOutcome.not_purchased": "Sotib olmadi",
+  "enum.callOutcome.price_objection": "Narx qimmat",
   "enum.callOutcome.pending": "Kutilmoqda",
   "enum.callOutcome.callback_needed": "Qayta qo'ng'iroq",
   "enum.callOutcome.unclear": "Aniqlanmadi",

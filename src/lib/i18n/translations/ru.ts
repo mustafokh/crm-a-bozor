@@ -203,11 +203,13 @@ export const ru: TranslationDict = {
   "enum.leadOutcome.AGREED": "Договорились",
   "enum.leadOutcome.REJECTED": "Отказ",
   "enum.leadOutcome.BOUGHT": "Купил",
+  "enum.leadOutcome.PRICE_OBJECTION": "Дорого",
   "enum.leadOutcome.NOT_INTERESTED": "Не интересно",
   "enum.leadOutcome.UNCLEAR": "Неясно",
 
   "enum.callOutcome.purchased": "Купил",
   "enum.callOutcome.not_purchased": "Не купил",
+  "enum.callOutcome.price_objection": "Возражение по цене",
   "enum.callOutcome.pending": "В ожидании",
   "enum.callOutcome.callback_needed": "Перезвонить",
   "enum.callOutcome.unclear": "Неясно",

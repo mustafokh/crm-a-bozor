@@ -21,7 +21,7 @@ JSON struktura (faqat JSON qaytar):
   "car_brand": "brend nomi",
   "car_transmission": "mexanika | avtomat | null",
   "budget": "mijoz aytgan byudjet/narx (matn, masalan '184000$')",
-  "outcome": "purchased | not_purchased | pending | callback_needed | null",
+  "outcome": "purchased | not_purchased | price_objection | pending | callback_needed | null",
   "reason_purchased": null,
   "reason_not_purchased": "narx yuqori, o'ylab ko'rish va h.k.",
   "lead_source": "whatsapp | telegram | other | null",
@@ -29,7 +29,16 @@ JSON struktura (faqat JSON qaytar):
   "sentiment": "positive | neutral | negative | null",
   "follow_up_needed": true/false,
   "follow_up_note": "null yoki qayta bog'lanish sababi"
-}`;
+}
+
+OUTCOME qoidalari (MUHIM — vaziyatga qarab tanla):
+- "price_objection" — mijoz narx/qimmat/byudjet haqida shikoyat qiladi ("qimmat", "expensive", "juda ko'p", "byudjetdan oshib ketdi", "No it is expensive for me") lekin avtomobilga qiziqishi saqlanadi yoki hali qaror qilmagan. BU not_purchased EMAS.
+- "not_purchased" — mijoz aniq rad etdi yoki qiziqmaydi ("qiziqmayman", "kerak emas", "not interested", "don't want this car")
+- "pending" — o'ylab ko'radi, keyinroq qaror qiladi
+- "callback_needed" — qayta bog'lanish kerak
+- "purchased" — sotib oldi yoki kelishildi
+
+Misol: Toyota Land Cruiser $184k muhokama qilingan, mijoz "No it is expensive for me" desa → outcome: "price_objection" (NOT "not_purchased").`;
 
 /** Mijoz:/Xodim: yorlig'idan xabar matnini ajratadi. */
 export function extractMessageText(labeledLine: string): string {

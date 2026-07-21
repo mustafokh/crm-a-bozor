@@ -203,11 +203,13 @@ export const en: TranslationDict = {
   "enum.leadOutcome.AGREED": "Agreed",
   "enum.leadOutcome.REJECTED": "Rejected",
   "enum.leadOutcome.BOUGHT": "Purchased",
+  "enum.leadOutcome.PRICE_OBJECTION": "Price too high",
   "enum.leadOutcome.NOT_INTERESTED": "Not interested",
   "enum.leadOutcome.UNCLEAR": "Unclear",
 
   "enum.callOutcome.purchased": "Purchased",
   "enum.callOutcome.not_purchased": "Not purchased",
+  "enum.callOutcome.price_objection": "Price objection",
   "enum.callOutcome.pending": "Pending",
   "enum.callOutcome.callback_needed": "Callback needed",
   "enum.callOutcome.unclear": "Unclear",

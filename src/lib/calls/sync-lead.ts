@@ -12,6 +12,7 @@ const CHANNEL_TO_LEAD: Record<string, string> = {
 const OUTCOME_TO_LEAD: Record<string, string> = {
   purchased: "BOUGHT",
   not_purchased: "NOT_INTERESTED",
+  price_objection: "PRICE_OBJECTION",
   pending: "THINKING",
   callback_needed: "CALLBACK",
   unclear: "UNCLEAR",
