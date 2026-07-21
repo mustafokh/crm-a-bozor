@@ -6,7 +6,8 @@ import { normalizePhone, extractPhoneFromText } from "@/lib/phone";
 import { detectCountryFromPhone } from "@/lib/calls/phone-country";
 import { analyzeMessagingTranscript } from "@/lib/calls/analyze-messaging";
 import { analyzeTranscript } from "@/lib/calls/analyze-transcript";
-import { syncCallToLead } from "@/lib/calls/sync-lead";
+import { syncCallToLead, syncFilteredCall } from "@/lib/calls/sync-lead";
+import { checkBusinessRelevance } from "@/lib/calls/check-business-relevance";
 import { resolveCallDirection } from "@/lib/calls/call-direction";
 import {
   formatTranscriptAsDialog,
@@ -257,6 +258,114 @@ export async function POST(req: Request) {
     transcriptForAnalysis = formattedTranscript;
   }
 
+  // Biznes-relevans tekshiruvi — har yangi xabar/qo'ng'iroqda BUTUN thread bo'yicha
+  let businessRelevance: { is_business_related: boolean; reason: string };
+  try {
+    businessRelevance = await checkBusinessRelevance(transcriptForAnalysis, sourceRaw);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Business relevance xatosi";
+    const status = message.includes("OPENAI_API_KEY") ? 503 : 502;
+    return NextResponse.json({ error: message }, { status });
+  }
+
+  const isBusinessRelated = businessRelevance.is_business_related;
+  const filterReason = businessRelevance.reason;
+
+  // Biznesga aloqasi yo'q — Call saqlash, Lead yaratmaslik/yashirish
+  if (!isBusinessRelated) {
+    const employeeOverride = String(body.employee_name ?? "").trim() || null;
+    const filteredCallData: Parameters<typeof prisma.call.create>[0]["data"] = {
+      phone,
+      country,
+      callDate: callDate!,
+      durationSeconds,
+      fileName,
+      audioUrl: audioParsed.value,
+      source: sourceRaw,
+      direction: callDirection,
+      rawTranscript: persistedTranscript,
+      formattedTranscript,
+      employeeName: employeeOverride,
+      isBusinessRelated: false,
+      filteredOut: true,
+      businessFilterReason: filterReason,
+      summary: filterReason,
+      outcome: "filtered",
+    };
+
+    let callId: string;
+    try {
+      const call = await prisma.call.create({
+        data: filteredCallData,
+        select: { id: true },
+      });
+      callId = call.id;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "call.create failed";
+      console.error("POST /api/calls filtered create error:", message);
+      const retryData: Record<string, unknown> = { ...filteredCallData };
+      if (isMissingColumnError(message, "is_business_related") || isMissingColumnError(message, "isBusinessRelated")) {
+        delete retryData.isBusinessRelated;
+        delete retryData.filteredOut;
+        delete retryData.businessFilterReason;
+      }
+      if (isMissingColumnError(message, "audio_url") || isMissingColumnError(message, "audioUrl")) {
+        delete retryData.audioUrl;
+      }
+      if (isMissingColumnError(message, "direction")) {
+        delete retryData.direction;
+      }
+      if (
+        isMissingColumnError(message, "formatted_transcript") ||
+        isMissingColumnError(message, "formattedTranscript")
+      ) {
+        delete retryData.formattedTranscript;
+      }
+      try {
+        const retryCall = await prisma.call.create({
+          data: retryData as typeof filteredCallData,
+          select: { id: true },
+        });
+        callId = retryCall.id;
+      } catch (e2) {
+        const message2 = e2 instanceof Error ? e2.message : "call persist retry failed";
+        return NextResponse.json({ error: "Server xatosi", detail: message2 }, { status: 500 });
+      }
+    }
+
+    let leadId: string | null = null;
+    try {
+      const lead = await syncFilteredCall({
+        phone,
+        country,
+        callDate: callDate!,
+        channelSource: sourceRaw,
+        rawTranscript: persistedTranscript,
+        callId,
+        filterReason,
+        employeeName: employeeOverride,
+      });
+      leadId = lead.manuallyPromoted ? lead.id : lead.isFiltered ? lead.id : null;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "syncFilteredCall failed";
+      console.error("POST /api/calls filtered sync error:", message);
+    }
+
+    return NextResponse.json(
+      {
+        ok: true,
+        id: callId,
+        lead_id: leadId,
+        filtered: true,
+        is_business_related: false,
+        business_filter_reason: filterReason,
+        country,
+        direction: callDirection,
+      },
+      { status: 201 }
+    );
+  }
+
   let analysis;
   try {
     if (isMessaging) {
@@ -320,6 +429,9 @@ export async function POST(req: Request) {
     direction: callDirection,
     rawTranscript: persistedTranscript,
     formattedTranscript,
+    isBusinessRelated: true,
+    filteredOut: false,
+    businessFilterReason: null,
     ...analysisFields,
   };
 
@@ -351,6 +463,11 @@ export async function POST(req: Request) {
     ) {
       delete retryData.formattedTranscript;
     }
+    if (isMissingColumnError(message, "is_business_related") || isMissingColumnError(message, "isBusinessRelated")) {
+      delete retryData.isBusinessRelated;
+      delete retryData.filteredOut;
+      delete retryData.businessFilterReason;
+    }
 
     try {
       const retryCall = await prisma.call.create({
@@ -374,6 +491,7 @@ export async function POST(req: Request) {
       analysis,
       rawTranscript: persistedTranscript,
       callId,
+      clearFiltered: true,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "syncCallToLead failed";
@@ -403,6 +521,8 @@ export async function POST(req: Request) {
       direction: callDirection,
       formatted_transcript: formattedTranscript,
       unclear: analysis.outcome === "unclear",
+      is_business_related: true,
+      filtered: false,
       analysis: {
         employee_name: analysis.employeeName,
         customer_name: analysis.customerName,

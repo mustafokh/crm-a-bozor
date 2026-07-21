@@ -1,12 +1,22 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { CHANNEL_SOURCES } from "@/lib/constants";
 import { resolveCountry } from "@/lib/country-display";
 import { stripMakeFromModel } from "@/lib/lead-helpers";
 
-function leadWhere(userId?: string, role?: string) {
-  return role === "MANAGER"
-    ? { OR: [{ assignedToId: userId }, { assignedToId: null }] }
-    : {};
+function leadWhere(userId?: string, role?: string): Prisma.LeadWhereInput {
+  const visibility: Prisma.LeadWhereInput = {
+    OR: [{ isFiltered: false }, { manuallyPromoted: true }],
+  };
+  if (role === "MANAGER") {
+    return {
+      AND: [
+        { OR: [{ assignedToId: userId }, { assignedToId: null }] },
+        visibility,
+      ],
+    };
+  }
+  return visibility;
 }
 
 function todayStart() {

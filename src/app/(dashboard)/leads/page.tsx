@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Plus, Phone, Trash2, Pencil, MessageSquare, History, Search, User,
+  Plus, Phone, Trash2, Pencil, MessageSquare, History, Search, User, UserCheck,
 } from "lucide-react";
 import { useI18n } from "@/components/language-provider";
 import { PageHeader } from "@/components/page-header";
@@ -61,6 +61,8 @@ interface Lead extends TalkRecord {
   latestCall?: LatestCallInfo | null;
   latestPhoneCall?: LatestCallInfo | null;
   calls?: CallHistoryItem[];
+  isFiltered?: boolean;
+  manuallyPromoted?: boolean;
 }
 
 interface Meta {
@@ -108,21 +110,24 @@ function LeadsPageContent() {
   const [filterOutcome, setFilterOutcome] = useState("");
   const [filterToday, setFilterToday] = useState(false);
   const [filterUnassigned, setFilterUnassigned] = useState(false);
+  const [viewMode, setViewMode] = useState<"main" | "filtered">("main");
+  const [promotingId, setPromotingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const searchParams = useSearchParams();
   const urlHandled = useRef(false);
 
   const load = useCallback(async () => {
-    const [lRes, mRes] = await Promise.all([fetch("/api/leads"), fetch("/api/meta")]);
+    const leadsUrl = viewMode === "filtered" ? "/api/leads?filtered=1" : "/api/leads";
+    const [lRes, mRes] = await Promise.all([fetch(leadsUrl), fetch("/api/meta")]);
     const lData = await lRes.json();
     const mData = await mRes.json();
     setLeads(lData.leads ?? []);
     setMeta({ sellers: mData.sellers ?? [] });
     setLoading(false);
-  }, []);
+  }, [viewMode]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setLoading(true); load(); }, [load]);
 
   useEffect(() => {
     if (loading || urlHandled.current) return;
@@ -328,6 +333,18 @@ function LeadsPageContent() {
     load();
   }
 
+  async function promoteLead(lead: Lead) {
+    setPromotingId(lead.id);
+    const res = await fetch(`/api/leads/${lead.id}/promote`, { method: "POST" });
+    setPromotingId(null);
+    if (!res.ok) {
+      toast(t("common.error"), "error");
+      return;
+    }
+    toast(t("leads.promoted"));
+    setViewMode("main");
+  }
+
   function outcomeLabel(key?: string | null) {
     return leadOutcomeLabel(t, key);
   }
@@ -351,6 +368,38 @@ function LeadsPageContent() {
 
       <PublicLinksCard />
 
+      <div className="mb-4 flex flex-wrap gap-2 border-b border-border pb-3">
+        <button
+          type="button"
+          onClick={() => setViewMode("main")}
+          className={cn(
+            "rounded-lg px-4 py-2 text-sm font-semibold transition-all",
+            viewMode === "main"
+              ? "bg-foreground text-background shadow-sm"
+              : "text-muted-foreground hover:bg-secondary"
+          )}
+        >
+          {t("leads.tabMain")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode("filtered")}
+          className={cn(
+            "rounded-lg px-4 py-2 text-sm font-semibold transition-all",
+            viewMode === "filtered"
+              ? "bg-foreground text-background shadow-sm"
+              : "text-muted-foreground hover:bg-secondary"
+          )}
+        >
+          {t("leads.tabFiltered")}
+        </button>
+      </div>
+
+      {viewMode === "filtered" && (
+        <p className="mb-4 text-sm text-muted-foreground">{t("leads.filteredHint")}</p>
+      )}
+
+      {viewMode === "main" && (
       <div className="mb-4 flex flex-wrap gap-2">
         <button
           type="button"
@@ -382,7 +431,9 @@ function LeadsPageContent() {
           );
         })}
       </div>
+      )}
 
+      {viewMode === "main" && (
       <div className="mb-3 flex flex-wrap items-center gap-4 text-xs font-semibold">
         <span className="flex items-center gap-1.5 text-blue-800">
           <span className="inline-block h-4 w-2 rounded-full bg-blue-700" /> Qo&apos;ng&apos;iroq
@@ -394,6 +445,7 @@ function LeadsPageContent() {
           <span className="inline-block h-4 w-2 rounded-full bg-[#229ED9]" /> Telegram
         </span>
       </div>
+      )}
 
       <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center">
         <div className="relative min-w-[200px] flex-1">
@@ -465,7 +517,7 @@ function LeadsPageContent() {
               {filtered.length === 0 ? (
                 <TR>
                   <TD colSpan={15} className="py-12 text-center text-muted-foreground">
-                    {t("leads.empty")}
+                    {viewMode === "filtered" ? t("leads.filteredEmpty") : t("leads.empty")}
                   </TD>
                 </TR>
               ) : (
@@ -476,8 +528,8 @@ function LeadsPageContent() {
                     key={lead.id}
                     className={cn(
                       "cursor-pointer",
-                      ch?.line,
-                      ch?.row
+                      viewMode === "filtered" ? "opacity-80" : ch?.line,
+                      viewMode === "main" ? ch?.row : undefined
                     )}
                     onClick={() => openProfile(lead)}
                   >
@@ -522,6 +574,20 @@ function LeadsPageContent() {
                     </TD>
                     <TD onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
+                        {viewMode === "filtered" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={promotingId === lead.id}
+                            onClick={() => promoteLead(lead)}
+                            title={t("leads.promoteAction")}
+                          >
+                            <UserCheck className="h-4 w-4" />
+                            {t("leads.promoteAction")}
+                          </Button>
+                        )}
+                        {viewMode === "main" && (
+                          <>
                         <Button variant="ghost" size="icon" onClick={() => openTalk(lead)} title={t("leads.addTalk")}>
                           <MessageSquare className="h-4 w-4" />
                         </Button>
@@ -534,6 +600,8 @@ function LeadsPageContent() {
                         <Button variant="ghost" size="icon" onClick={() => setDeleteId(lead.id)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
+                          </>
+                        )}
                       </div>
                     </TD>
                   </TR>

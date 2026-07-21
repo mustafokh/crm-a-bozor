@@ -179,6 +179,10 @@ model Lead {
   paymentType     String?
   clientWants     String?
   outcome         String?
+  /** Asosiy ro'yxatdan yashirilgan (shaxsiy/biznesga aloqasi yo'q suhbat) */
+  isFiltered        Boolean @default(false) @map("is_filtered")
+  /** Qo'lda "Bu aslida mijoz" orqali asosiy ro'yxatga qaytarilgan */
+  manuallyPromoted  Boolean @default(false) @map("manually_promoted")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -198,6 +202,7 @@ model Lead {
   @@index([carColor])
   @@index([source])
   @@index([carModel])
+  @@index([isFiltered])
 }
 
 // Tashqi tizimdan keladigan qo'ng'iroq/WhatsApp transkriptlari (POST /api/calls)
@@ -233,6 +238,10 @@ model Call {
   sentiment          String?
   followUpNeeded     Boolean  @default(false) @map("follow_up_needed")
   followUpNote       String?  @map("follow_up_note") @db.Text
+  /** AI biznes-relevans tekshiruvi natijasi */
+  isBusinessRelated  Boolean? @map("is_business_related")
+  filteredOut        Boolean  @default(false) @map("filtered_out")
+  businessFilterReason String? @map("business_filter_reason") @db.Text
 
   leadId    String? @map("lead_id")
   lead      Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
@@ -248,6 +257,7 @@ model Call {
   @@index([source])
   @@index([direction])
   @@index([leadId])
+  @@index([filteredOut])
   @@map("calls")
 }
 

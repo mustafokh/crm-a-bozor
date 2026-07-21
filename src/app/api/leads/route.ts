@@ -12,6 +12,17 @@ function managerWhere(auth: { id: string; role: string }) {
     : {};
 }
 
+function visibleLeadWhere(auth: { id: string; role: string }, filtered?: boolean) {
+  const manager = managerWhere(auth);
+  const hasManager = Object.keys(manager).length > 0;
+  if (filtered) {
+    const filterClause = { isFiltered: true, manuallyPromoted: false };
+    return hasManager ? { AND: [manager, filterClause] } : filterClause;
+  }
+  const visibility = { OR: [{ isFiltered: false }, { manuallyPromoted: true }] };
+  return hasManager ? { AND: [manager, visibility] } : visibility;
+}
+
 const leadInclude = {
   assignedTo: { select: { id: true, name: true } },
   conversations: {
@@ -21,12 +32,15 @@ const leadInclude = {
   calls: CALLS_HISTORY_INCLUDE,
 };
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requirePermission("leads");
   if (auth instanceof NextResponse) return auth;
 
+  const { searchParams } = new URL(req.url);
+  const showFiltered = searchParams.get("filtered") === "1";
+
   const leads = await prisma.lead.findMany({
-    where: managerWhere(auth),
+    where: visibleLeadWhere(auth, showFiltered),
     orderBy: [{ talkedAt: "desc" }, { createdAt: "desc" }],
     include: {
       assignedTo: { select: { id: true, name: true } },
